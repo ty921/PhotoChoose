@@ -3,11 +3,9 @@ package com.luck.picture.lib.model;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
 import android.provider.MediaStore;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
+import android.support.annotation.NonNull;
+import android.support.v4.app.FragmentActivity;
 
 import com.luck.picture.lib.R;
 import com.luck.picture.lib.config.PictureConfig;
@@ -15,7 +13,6 @@ import com.luck.picture.lib.config.PictureMimeType;
 import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.entity.LocalMediaFolder;
 import com.luck.picture.lib.rxbus2.RxUtils;
-import com.luck.picture.lib.tools.MediaUtils;
 import com.luck.picture.lib.tools.SdkVersionUtils;
 
 import java.io.File;
@@ -37,6 +34,7 @@ public class LocalMediaLoader {
     private int type;
     private static final Uri QUERY_URI = MediaStore.Files.getContentUri("external");
     private static final String ORDER_BY = MediaStore.Files.FileColumns._ID + " DESC";
+    private static final String DURATION = "duration";
     private static final String NOT_GIF = "!='image/gif'";
     /**
      * 过滤掉小于500毫秒的录音
@@ -57,7 +55,7 @@ public class LocalMediaLoader {
             MediaStore.MediaColumns.MIME_TYPE,
             MediaStore.MediaColumns.WIDTH,
             MediaStore.MediaColumns.HEIGHT,
-            MediaStore.MediaColumns.DURATION};
+            DURATION};
 
     /**
      * 图片
@@ -79,16 +77,6 @@ public class LocalMediaLoader {
         return MediaStore.Files.FileColumns.MEDIA_TYPE + "=?"
                 + " AND " + MediaStore.MediaColumns.SIZE + ">0"
                 + " AND " + time_condition;
-    }
-
-    /**
-     * 查询条件(视频)
-     *
-     * @return
-     */
-    private static String getSelectionArgsForSingleMediaCondition() {
-        return MediaStore.Files.FileColumns.MEDIA_TYPE + "=?"
-                + " AND " + MediaStore.MediaColumns.SIZE + ">0";
     }
 
     /**
@@ -136,7 +124,6 @@ public class LocalMediaLoader {
 
     public void loadAllMedia(final LocalMediaLoadListener imageLoadListener) {
         RxUtils.io(new RxUtils.RxSimpleTask<List<LocalMediaFolder>>() {
-            @RequiresApi(api = Build.VERSION_CODES.O)
             @NonNull
             @Override
             public List<LocalMediaFolder> doSth(Object... objects) {
@@ -155,7 +142,7 @@ public class LocalMediaLoader {
                         break;
                     case PictureConfig.TYPE_VIDEO:
                         // 只获取视频
-                        selection = getSelectionArgsForSingleMediaCondition();
+                        selection = getSelectionArgsForSingleMediaCondition(getDurationCondition(0, 0));
                         selectionArgs = getSelectionArgsForSingleMediaType(MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO);
                         break;
                     case PictureConfig.TYPE_AUDIO:
@@ -166,7 +153,6 @@ public class LocalMediaLoader {
                     default:
                         break;
                 }
-
                 Cursor data = mContext.getContentResolver().query(QUERY_URI, PROJECTION, selection, selectionArgs, ORDER_BY);
                 try {
                     List<LocalMediaFolder> imageFolders = new ArrayList<>();
@@ -192,28 +178,12 @@ public class LocalMediaLoader {
                                 int h = data.getInt
                                         (data.getColumnIndexOrThrow(PROJECTION[4]));
 
-                                long duration = data.getLong
+                                int duration = data.getInt
                                         (data.getColumnIndexOrThrow(PROJECTION[5]));
 
-                                if (type == PictureConfig.TYPE_VIDEO) {
-                                    if (duration == 0) {
-                                        duration = MediaUtils.extractVideoDuration(mContext, isAndroidQ, path);
-                                    }
-                                    if (videoMinS > 0 && duration < videoMinS) {
-                                        // 如果设置了最小显示多少秒的视频
-                                        continue;
-                                    }
-                                    if (videoMaxS > 0 && duration > videoMaxS) {
-                                        // 如果设置了最大显示多少秒的视频
-                                        continue;
-                                    }
-                                    if (duration == 0) {
-                                        // 时长如果为0，就当做损坏的视频处理过滤掉
-                                        continue;
-                                    }
-                                }
                                 LocalMedia image = new LocalMedia
                                         (path, duration, type, pictureType, w, h);
+
                                 LocalMediaFolder folder = getImageFolder(path, imageFolders);
                                 List<LocalMedia> images = folder.getImages();
                                 images.add(image);
@@ -318,11 +288,9 @@ public class LocalMediaLoader {
      */
     private String getDurationCondition(long exMaxLimit, long exMinLimit) {
         long maxS = videoMaxS == 0 ? Long.MAX_VALUE : videoMaxS;
-        if (exMaxLimit != 0) {
-            maxS = Math.min(maxS, exMaxLimit);
-        }
+        if (exMaxLimit != 0) maxS = Math.min(maxS, exMaxLimit);
 
-        return String.format(Locale.CHINA, "%d <%s " + MediaStore.MediaColumns.DURATION + " and " + MediaStore.MediaColumns.DURATION + " <= %d",
+        return String.format(Locale.CHINA, "%d <%s duration and duration <= %d",
                 Math.max(exMinLimit, videoMinS),
                 Math.max(exMinLimit, videoMinS) == 0 ? "" : "=",
                 maxS);

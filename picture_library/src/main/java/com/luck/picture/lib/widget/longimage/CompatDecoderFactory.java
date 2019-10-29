@@ -1,7 +1,6 @@
 package com.luck.picture.lib.widget.longimage;
 
-
-import androidx.annotation.NonNull;
+import android.support.annotation.NonNull;
 
 /**
  * Compatibility factory to instantiate decoders with empty public constructors.

@@ -1,7 +1,7 @@
 package com.luck.picture.lib;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -10,6 +10,11 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.MediaStore;
+import android.support.annotation.RequiresApi;
+import android.support.v4.content.FileProvider;
+import android.support.v7.widget.GridLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SimpleItemAnimator;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.Animation;
@@ -19,12 +24,6 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
-
-import androidx.annotation.RequiresApi;
-import androidx.core.content.FileProvider;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.luck.picture.lib.adapter.PictureAlbumDirectoryAdapter;
 import com.luck.picture.lib.adapter.PictureImageGridAdapter;
@@ -43,7 +42,6 @@ import com.luck.picture.lib.rxbus2.Subscribe;
 import com.luck.picture.lib.rxbus2.ThreadMode;
 import com.luck.picture.lib.tools.DateUtils;
 import com.luck.picture.lib.tools.DoubleUtils;
-import com.luck.picture.lib.tools.MediaUtils;
 import com.luck.picture.lib.tools.PhotoTools;
 import com.luck.picture.lib.tools.PictureFileUtils;
 import com.luck.picture.lib.tools.ScreenUtils;
@@ -96,8 +94,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
     private boolean isPlayAudio = false;
     private CustomDialog audioDialog;
     private int audioH;
-
-    @SuppressLint("HandlerLeak")
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -108,8 +104,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     break;
                 case DISMISS_DIALOG:
                     dismissDialog();
-                    break;
-                default:
                     break;
             }
         }
@@ -143,8 +137,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                         onResult(medias);
                     }
                 }
-                break;
-            default:
                 break;
         }
     }
@@ -366,8 +358,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     // 录音
                     startOpenCameraAudio();
                     break;
-                default:
-                    break;
             }
         }
     }
@@ -582,16 +572,24 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
-        audioDialog.setOnDismissListener(dialog -> {
-            handler.removeCallbacks(runnable);
-            new Handler().postDelayed(() -> stop(path), 30);
-            try {
-                if (audioDialog != null
-                        && audioDialog.isShowing()) {
-                    audioDialog.dismiss();
+        audioDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                handler.removeCallbacks(runnable);
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        stop(path);
+                    }
+                }, 30);
+                try {
+                    if (audioDialog != null
+                            && audioDialog.isShowing()) {
+                        audioDialog.dismiss();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         });
         handler.post(runnable);
@@ -827,8 +825,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
                     audioDialog(media.getPath());
                 }
                 break;
-            default:
-                break;
         }
     }
 
@@ -971,15 +967,15 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
         boolean eqVideo = toType.startsWith(PictureConfig.VIDEO);
         int duration;
         if (eqVideo && androidQ) {
-            duration = MediaUtils
+            duration = PictureMimeType
                     .getLocalVideoDurationToAndroidQ(getApplicationContext(), cameraPath);
         } else {
-            duration = eqVideo ? MediaUtils.getLocalVideoDuration(cameraPath) : 0;
+            duration = eqVideo ? PictureMimeType.getLocalVideoDuration(cameraPath) : 0;
         }
         String pictureType;
         if (config.mimeType == PictureMimeType.ofAudio()) {
             pictureType = "audio/mpeg";
-            duration = MediaUtils.getLocalVideoDuration(cameraPath);
+            duration = PictureMimeType.getLocalVideoDuration(cameraPath);
         } else {
             pictureType = eqVideo ? PictureMimeType.createVideoType(getApplicationContext(), cameraPath)
                     : PictureMimeType.createImageType(cameraPath);
@@ -1166,8 +1162,6 @@ public class PictureSelectorActivity extends PictureBaseActivity implements View
             case 1:
                 // 录视频
                 startOpenCameraVideo();
-                break;
-            default:
                 break;
         }
     }

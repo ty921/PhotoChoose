@@ -9,10 +9,9 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.yalantis.ucrop.callback.BitmapCropCallback;
 import com.yalantis.ucrop.model.CropParameters;
@@ -154,7 +153,7 @@ public class BitmapCropTask extends AsyncTask<Void, Void, Throwable> {
         if (shouldCrop) {
             ExifInterface originalExif = null;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     ParcelFileDescriptor parcelFileDescriptor =
                             mContext.get().getContentResolver().openFileDescriptor(mImageInputUri, "r");
                     originalExif = new ExifInterface(parcelFileDescriptor.getFileDescriptor());

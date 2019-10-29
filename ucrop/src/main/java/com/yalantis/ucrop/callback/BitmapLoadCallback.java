@@ -2,9 +2,8 @@ package com.yalantis.ucrop.callback;
 
 import android.graphics.Bitmap;
 import android.net.Uri;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import com.yalantis.ucrop.model.ExifInfo;
 
