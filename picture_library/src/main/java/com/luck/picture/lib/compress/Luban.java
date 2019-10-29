@@ -1,12 +1,14 @@
 package com.luck.picture.lib.compress;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -95,7 +97,7 @@ public class Luban implements Handler.Callback {
      * use to store retrieved audio.
      *
      * @param context A context.
-     * @see #getImageCacheDir(Context, String)
+     * @see #getImageCacheDir(Context)
      */
     private File getImageCacheDir(Context context) {
         return getImageCacheDir(context, DEFAULT_DISK_CACHE_DIR);
@@ -293,17 +295,20 @@ public class Luban implements Handler.Callback {
                     if (androidQ) {
                         // Android Q 由于沙盒原因需要把外部图片资源复制到自己应用内
                         boolean isCut = media.isCut();
-                        String path;
+                        String path = null;
                         if (isCut) {
                             path = media.getCutPath();
+                            return new FileInputStream(path);
                         } else {
                             Uri parse = Uri.parse(media.getPath());
-                            Bitmap bitmapFromUri = BitmapUtils.getBitmapFromUri(context, parse);
-                            path = PictureFileUtils.getDiskCacheDir(context) + System.currentTimeMillis() + ".png";
-                            BitmapUtils.saveBitmap(bitmapFromUri, path);
-                            media.setCompressPath(path);
+                            if(TextUtils.isEmpty(media.getCompressPath())){
+                                Bitmap bitmapFromUri = BitmapUtils.getBitmapFromUri(context, parse);
+                                path = PictureFileUtils.getDiskCacheDir(context) + System.currentTimeMillis() + ".png";
+                                BitmapUtils.saveBitmap(bitmapFromUri, path);
+                                media.setCompressPath(path);
+                            }
+                            return new FileInputStream(media.getCompressPath());
                         }
-                        return new FileInputStream(path);
                     }
                     return new FileInputStream(media.isCut() ? media.getCutPath() : media.getPath());
                 }
@@ -341,6 +346,8 @@ public class Luban implements Handler.Callback {
                     load((File) src);
                 } else if (src instanceof Uri) {
                     load((Uri) src);
+                } else if (src instanceof LocalMedia) {
+                    load((LocalMedia) src);
                 } else {
                     throw new IllegalArgumentException("Incoming data type exception, it must be String, File, Uri or Bitmap");
                 }

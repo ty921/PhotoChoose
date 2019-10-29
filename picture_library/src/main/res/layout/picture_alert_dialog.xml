@@ -1,16 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/loading"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_width="60dp"
+    android:layout_height="60dp"
     android:layout_gravity="center"
     android:background="@drawable/dialog_custom_bg"
     android:gravity="center"
-    android:orientation="vertical"
-    android:padding="15dp">
+    android:orientation="vertical">
 
     <com.luck.picture.lib.dialog.PictureSpinView
         android:layout_width="30dp"
         android:layout_height="30dp" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="处理中"
+        android:textSize="12dp"
+        android:textColor="@color/white"
+        android:layout_marginTop="2dp"
+        />
 
 </LinearLayout>

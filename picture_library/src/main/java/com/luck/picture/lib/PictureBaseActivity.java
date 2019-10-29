@@ -452,15 +452,13 @@ public class PictureBaseActivity extends FragmentActivity {
                         } else if (media.isCut()) {
                             media.setPath(media.getCutPath());
                         } else {
-                            media.setPath(PictureFileUtils.getPath(PictureBaseActivity.this,
-                                    Uri.parse(media.getPath())));
-//                            String cachedDir = PictureFileUtils.getDiskCacheDir(getApplicationContext());
-//                            String imgType = PictureMimeType.getLastImgType(media.getPath());
-//                            String newPath = cachedDir + File.separator + System.currentTimeMillis() + imgType;
-//                            Bitmap bitmapFromUri = BitmapUtils.getBitmapFromUri(getApplicationContext(),
-//                                    Uri.parse(media.getPath()));
-//                            BitmapUtils.saveBitmap(bitmapFromUri, newPath);
-//                            media.setPath(newPath);
+                            String cachedDir = PictureFileUtils.getDiskCacheDir(getApplicationContext());
+                            String imgType = PictureMimeType.getLastImgType(media.getPath());
+                            String newPath = cachedDir + File.separator + System.currentTimeMillis() + imgType;
+                            Bitmap bitmapFromUri = BitmapUtils.getBitmapFromUri(getApplicationContext(),
+                                    Uri.parse(media.getPath()));
+                            BitmapUtils.saveBitmap(bitmapFromUri, newPath);
+                            media.setPath(newPath);
                         }
 
                     }
