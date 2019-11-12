@@ -1,6 +1,5 @@
 package com.yalantis.ucrop;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
@@ -142,32 +141,12 @@ public class UCropMulti {
     }
 
     /**
-     * Send the crop Intent from a support library Fragment
-     *
-     * @param fragment Fragment to receive result
-     */
-    public void start(@NonNull Context context, @NonNull android.support.v4.app.Fragment fragment) {
-        start(context, fragment, REQUEST_MULTI_CROP);
-    }
-
-    /**
      * Send the crop Intent with a custom request code
      *
      * @param fragment    Fragment to receive result
      * @param requestCode requestCode for result
      */
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public void start(@NonNull Context context, @NonNull Fragment fragment, int requestCode) {
-        fragment.startActivityForResult(getIntent(context), requestCode);
-    }
-
-    /**
-     * Send the crop Intent with a custom request code
-     *
-     * @param fragment    Fragment to receive result
-     * @param requestCode requestCode for result
-     */
-    public void start(@NonNull Context context, @NonNull android.support.v4.app.Fragment fragment, int requestCode) {
         fragment.startActivityForResult(getIntent(context), requestCode);
     }
 

@@ -33,11 +33,11 @@ import com.luck.picture.lib.config.PictureMimeType;
 import com.luck.picture.lib.dialog.CustomDialog;
 import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.permissions.RxPermissions;
-import com.luck.picture.lib.photoview.OnViewTapListener;
 import com.luck.picture.lib.photoview.PhotoView;
+import com.luck.picture.lib.tools.MediaUtils;
 import com.luck.picture.lib.tools.PictureFileUtils;
 import com.luck.picture.lib.tools.ScreenUtils;
-import com.luck.picture.lib.tools.ToastManage;
+import com.luck.picture.lib.tools.ToastUtils;
 import com.luck.picture.lib.widget.PreviewViewPager;
 import com.luck.picture.lib.widget.longimage.ImageSource;
 import com.luck.picture.lib.widget.longimage.ImageViewState;
@@ -55,11 +55,9 @@ import io.reactivex.Observer;
 import io.reactivex.disposables.Disposable;
 
 /**
- * author：luck
- * project：PictureSelector
- * package：com.luck.picture.ui
- * email：邮箱->893855882@qq.com
- * data：17/01/18
+ * @author：luck
+ * @data：2017/01/18 下午1:00
+ * @描述: 预览图片
  */
 public class PictureExternalPreviewActivity extends PictureBaseActivity implements View.OnClickListener {
     private ImageButton left_back;
@@ -67,6 +65,7 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
     private PreviewViewPager viewPager;
     private List<LocalMedia> images = new ArrayList<>();
     private int position = 0;
+    @Deprecated
     private String directory_path;
     private SimpleFragmentAdapter adapter;
     private LayoutInflater inflater;
@@ -78,9 +77,9 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.picture_activity_external_preview);
         inflater = LayoutInflater.from(this);
-        tv_title = (TextView) findViewById(R.id.picture_title);
-        left_back = (ImageButton) findViewById(R.id.left_back);
-        viewPager = (PreviewViewPager) findViewById(R.id.preview_pager);
+        tv_title = findViewById(R.id.picture_title);
+        left_back = findViewById(R.id.left_back);
+        viewPager = findViewById(R.id.preview_pager);
         position = getIntent().getIntExtra(PictureConfig.EXTRA_POSITION, 0);
         directory_path = getIntent().getStringExtra(PictureConfig.DIRECTORY_PATH);
         images = (List<LocalMedia>) getIntent().getSerializableExtra(PictureConfig.EXTRA_PREVIEW_SELECT_LIST);
@@ -137,13 +136,13 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
         public Object instantiateItem(ViewGroup container, int position) {
             View contentView = inflater.inflate(R.layout.picture_image_preview, container, false);
             // 常规图控件
-            final PhotoView imageView = (PhotoView) contentView.findViewById(R.id.preview_image);
+            final PhotoView imageView = contentView.findViewById(R.id.preview_image);
             // 长图控件
-            final SubsamplingScaleImageView longImg = (SubsamplingScaleImageView) contentView.findViewById(R.id.longImg);
+            final SubsamplingScaleImageView longImg = contentView.findViewById(R.id.longImg);
 
             LocalMedia media = images.get(position);
             if (media != null) {
-                final String pictureType = media.getPictureType();
+                final String mimeType = media.getMimeType();
                 final String path;
                 if (media.isCut() && !media.isCompressed()) {
                     // 裁剪过
@@ -159,8 +158,8 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
                 if (isHttp) {
                     showPleaseDialog();
                 }
-                boolean isGif = PictureMimeType.isGif(pictureType);
-                final boolean eqLongImg = PictureMimeType.isLongImg(media);
+                boolean isGif = PictureMimeType.isGif(mimeType);
+                final boolean eqLongImg = MediaUtils.isLongImg(media);
                 imageView.setVisibility(eqLongImg && !isGif ? View.GONE : View.VISIBLE);
                 longImg.setVisibility(eqLongImg && !isGif ? View.VISIBLE : View.GONE);
                 // 压缩过的gif就不是gif了
@@ -215,51 +214,42 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
                                 }
                             });
                 }
-                imageView.setOnViewTapListener(new OnViewTapListener() {
-                    @Override
-                    public void onViewTap(View view, float x, float y) {
-                        finish();
-                        overridePendingTransition(0, R.anim.a3);
-                    }
+                imageView.setOnViewTapListener((view, x, y) -> {
+                    finish();
+                    overridePendingTransition(0, R.anim.a3);
                 });
-                longImg.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        finish();
-                        overridePendingTransition(0, R.anim.a3);
-                    }
+                longImg.setOnClickListener(v -> {
+                    finish();
+                    overridePendingTransition(0, R.anim.a3);
                 });
-                imageView.setOnLongClickListener(new View.OnLongClickListener() {
-                    @Override
-                    public boolean onLongClick(View v) {
-                        if (rxPermissions == null) {
-                            rxPermissions = new RxPermissions(PictureExternalPreviewActivity.this);
-                        }
-                        rxPermissions.request(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                                .subscribe(new Observer<Boolean>() {
-                                    @Override
-                                    public void onSubscribe(Disposable d) {
-                                    }
-
-                                    @Override
-                                    public void onNext(Boolean aBoolean) {
-                                        if (aBoolean) {
-                                            showDownLoadDialog(path);
-                                        } else {
-                                            ToastManage.s(mContext, getString(R.string.picture_jurisdiction));
-                                        }
-                                    }
-
-                                    @Override
-                                    public void onError(Throwable e) {
-                                    }
-
-                                    @Override
-                                    public void onComplete() {
-                                    }
-                                });
-                        return true;
+                imageView.setOnLongClickListener(v -> {
+                    if (rxPermissions == null) {
+                        rxPermissions = new RxPermissions(PictureExternalPreviewActivity.this);
                     }
+                    rxPermissions.request(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                            .subscribe(new Observer<Boolean>() {
+                                @Override
+                                public void onSubscribe(Disposable d) {
+                                }
+
+                                @Override
+                                public void onNext(Boolean aBoolean) {
+                                    if (aBoolean) {
+                                        showDownLoadDialog(path);
+                                    } else {
+                                        ToastUtils.s(mContext, getString(R.string.picture_jurisdiction));
+                                    }
+                                }
+
+                                @Override
+                                public void onError(Throwable e) {
+                                }
+
+                                @Override
+                                public void onComplete() {
+                                }
+                            });
+                    return true;
                 });
             }
             (container).addView(contentView, 0);
@@ -291,42 +281,34 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
                 ScreenUtils.getScreenWidth(PictureExternalPreviewActivity.this) * 3 / 4,
                 ScreenUtils.getScreenHeight(PictureExternalPreviewActivity.this) / 4,
                 R.layout.picture_wind_base_dialog_xml, R.style.Theme_dialog);
-        Button btn_cancel = (Button) dialog.findViewById(R.id.btn_cancel);
-        Button btn_commit = (Button) dialog.findViewById(R.id.btn_commit);
-        TextView tv_title = (TextView) dialog.findViewById(R.id.tv_title);
-        TextView tv_content = (TextView) dialog.findViewById(R.id.tv_content);
+        Button btn_cancel = dialog.findViewById(R.id.btn_cancel);
+        Button btn_commit = dialog.findViewById(R.id.btn_commit);
+        TextView tv_title = dialog.findViewById(R.id.tv_title);
+        TextView tv_content = dialog.findViewById(R.id.tv_content);
         tv_title.setText(getString(R.string.picture_prompt));
         tv_content.setText(getString(R.string.picture_prompt_content));
-        btn_cancel.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                dialog.dismiss();
-            }
-        });
-        btn_commit.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                showPleaseDialog();
-                boolean isHttp = PictureMimeType.isHttp(path);
-                if (isHttp) {
-                    loadDataThread = new loadDataThread(path);
-                    loadDataThread.start();
-                } else {
-                    // 有可能本地图片
-                    try {
-                        String dirPath = PictureFileUtils.createDir(PictureExternalPreviewActivity.this,
-                                System.currentTimeMillis() + ".png", directory_path);
-                        PictureFileUtils.copyFile(path, dirPath);
-                        ToastManage.s(mContext, getString(R.string.picture_save_success) + "\n" + dirPath);
-                        dismissDialog();
-                    } catch (IOException e) {
-                        ToastManage.s(mContext, getString(R.string.picture_save_error) + "\n" + e.getMessage());
-                        dismissDialog();
-                        e.printStackTrace();
-                    }
+        btn_cancel.setOnClickListener(view -> dialog.dismiss());
+        btn_commit.setOnClickListener(view -> {
+            showPleaseDialog();
+            boolean isHttp = PictureMimeType.isHttp(path);
+            if (isHttp) {
+                loadDataThread = new loadDataThread(path);
+                loadDataThread.start();
+            } else {
+                // 有可能本地图片
+                try {
+                    String dirPath = PictureFileUtils.createDir(PictureExternalPreviewActivity.this,
+                            System.currentTimeMillis() + ".png");
+                    PictureFileUtils.copyFile(path, dirPath);
+                    ToastUtils.s(mContext, getString(R.string.picture_save_success) + "\n" + dirPath);
+                    dismissDialog();
+                } catch (IOException e) {
+                    ToastUtils.s(mContext, getString(R.string.picture_save_error) + "\n" + e.getMessage());
+                    dismissDialog();
+                    e.printStackTrace();
                 }
-                dialog.dismiss();
             }
+            dialog.dismiss();
         });
         dialog.show();
     }
@@ -356,7 +338,7 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
         try {
             URL u = new URL(urlPath);
             String path = PictureFileUtils.createDir(PictureExternalPreviewActivity.this,
-                    System.currentTimeMillis() + ".png", directory_path);
+                    System.currentTimeMillis() + ".png");
             byte[] buffer = new byte[1024 * 8];
             int read;
             int ava = 0;
@@ -377,7 +359,7 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
             message.obj = path;
             handler.sendMessage(message);
         } catch (IOException e) {
-            ToastManage.s(mContext, getString(R.string.picture_save_error) + "\n" + e.getMessage());
+            ToastUtils.s(mContext, getString(R.string.picture_save_error) + "\n" + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -390,7 +372,7 @@ public class PictureExternalPreviewActivity extends PictureBaseActivity implemen
             switch (msg.what) {
                 case 200:
                     String path = (String) msg.obj;
-                    ToastManage.s(mContext, getString(R.string.picture_save_success) + "\n" + path);
+                    ToastUtils.s(mContext, getString(R.string.picture_save_success) + "\n" + path);
                     dismissDialog();
                     break;
             }

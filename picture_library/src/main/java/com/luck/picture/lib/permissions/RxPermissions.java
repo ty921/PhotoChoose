@@ -2,9 +2,10 @@ package com.luck.picture.lib.permissions;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.FragmentManager;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
 import android.text.TextUtils;
 
 import java.util.ArrayList;
@@ -30,18 +31,18 @@ public class RxPermissions {
 
     public RxPermissionsFragment mRxPermissionsFragment;
 
-    public RxPermissions(@NonNull Activity activity) {
+    public RxPermissions(@NonNull FragmentActivity activity) {
         mRxPermissionsFragment = getRxPermissionsFragment(activity);
     }
 
-    private RxPermissionsFragment getRxPermissionsFragment(Activity activity) {
+    private RxPermissionsFragment getRxPermissionsFragment(FragmentActivity activity) {
         RxPermissionsFragment rxPermissionsFragment = null;
         try {
             rxPermissionsFragment = findRxPermissionsFragment(activity);
             boolean isNewInstance = rxPermissionsFragment == null;
             if (isNewInstance) {
                 rxPermissionsFragment = new RxPermissionsFragment();
-                FragmentManager fragmentManager = activity.getFragmentManager();
+                FragmentManager fragmentManager = activity.getSupportFragmentManager();
                 fragmentManager
                         .beginTransaction()
                         .add(rxPermissionsFragment, TAG)
@@ -54,8 +55,8 @@ public class RxPermissions {
         return rxPermissionsFragment;
     }
 
-    private RxPermissionsFragment findRxPermissionsFragment(Activity activity) {
-        return (RxPermissionsFragment) activity.getFragmentManager().findFragmentByTag(TAG);
+    private RxPermissionsFragment findRxPermissionsFragment(FragmentActivity activity) {
+        return (RxPermissionsFragment) activity.getSupportFragmentManager().findFragmentByTag(TAG);
     }
 
     public void setLogging(boolean logging) {
@@ -71,32 +72,24 @@ public class RxPermissions {
      */
     @SuppressWarnings("WeakerAccess")
     public <T> ObservableTransformer<T, Boolean> ensure(final String... permissions) {
-        return new ObservableTransformer<T, Boolean>() {
-            @Override
-            public ObservableSource<Boolean> apply(Observable<T> o) {
-                return request(o, permissions)
-                        // Transform Observable<Permission> to Observable<Boolean>
-                        .buffer(permissions.length)
-                        .flatMap(new Function<List<Permission>, ObservableSource<Boolean>>() {
-                            @Override
-                            public ObservableSource<Boolean> apply(List<Permission> permissions) throws Exception {
-                                if (permissions.isEmpty()) {
-                                    // Occurs during orientation change, when the subject receives onComplete.
-                                    // In that case we don't want to propagate that empty list to the
-                                    // subscriber, only the onComplete.
-                                    return Observable.empty();
-                                }
-                                // Return true if all permissions are granted.
-                                for (Permission p : permissions) {
-                                    if (!p.granted) {
-                                        return Observable.just(false);
-                                    }
-                                }
-                                return Observable.just(true);
-                            }
-                        });
-            }
-        };
+        return o -> request(o, permissions)
+                // Transform Observable<Permission> to Observable<Boolean>
+                .buffer(permissions.length)
+                .flatMap((Function<List<Permission>, ObservableSource<Boolean>>) permissions1 -> {
+                    if (permissions1.isEmpty()) {
+                        // Occurs during orientation change, when the subject receives onComplete.
+                        // In that case we don't want to propagate that empty list to the
+                        // subscriber, only the onComplete.
+                        return Observable.empty();
+                    }
+                    // Return true if all permissions are granted.
+                    for (Permission p : permissions1) {
+                        if (!p.granted) {
+                            return Observable.just(false);
+                        }
+                    }
+                    return Observable.just(true);
+                });
     }
 
     /**
@@ -108,12 +101,7 @@ public class RxPermissions {
      */
     @SuppressWarnings("WeakerAccess")
     public <T> ObservableTransformer<T, Permission> ensureEach(final String... permissions) {
-        return new ObservableTransformer<T, Permission>() {
-            @Override
-            public ObservableSource<Permission> apply(Observable<T> o) {
-                return request(o, permissions);
-            }
-        };
+        return o -> request(o, permissions);
     }
 
     /**

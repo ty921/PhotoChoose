@@ -20,12 +20,11 @@ import android.widget.TextView;
 
 import com.luck.picture.lib.R;
 import com.luck.picture.lib.adapter.PictureAlbumDirectoryAdapter;
+import com.luck.picture.lib.config.PictureSelectionConfig;
 import com.luck.picture.lib.decoration.RecycleViewDivider;
 import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.entity.LocalMediaFolder;
-import com.luck.picture.lib.tools.AttrsUtils;
 import com.luck.picture.lib.tools.ScreenUtils;
-import com.luck.picture.lib.tools.StringUtils;
 
 import java.util.List;
 
@@ -45,11 +44,11 @@ public class FolderPopWindow extends PopupWindow implements View.OnClickListener
     private Animation animationIn, animationOut;
     private boolean isDismiss = false;
     private LinearLayout id_ll_root;
-    private TextView picture_title;
+    private TextView tvPictureTitle;
     private Drawable drawableUp, drawableDown;
     private int mimeType;
 
-    public FolderPopWindow(Context context, int mimeType) {
+    public FolderPopWindow(Context context, int mimeType, PictureSelectionConfig config) {
         this.context = context;
         this.mimeType = mimeType;
         window = LayoutInflater.from(context).inflate(R.layout.picture_window_folder, null);
@@ -61,17 +60,18 @@ public class FolderPopWindow extends PopupWindow implements View.OnClickListener
         this.setOutsideTouchable(true);
         this.update();
         this.setBackgroundDrawable(new ColorDrawable(Color.argb(123, 0, 0, 0)));
-        drawableUp = AttrsUtils.getTypeValuePopWindowImg(context, R.attr.picture_arrow_up_icon);
-        drawableDown = AttrsUtils.getTypeValuePopWindowImg(context, R.attr.picture_arrow_down_icon);
+
+        drawableUp = ContextCompat.getDrawable(context, config.upResId <= 0 ? R.drawable.arrow_up : config.upResId);
+        drawableDown = ContextCompat.getDrawable(context, config.downResId <= 0 ? R.drawable.arrow_down : config.downResId);
         animationIn = AnimationUtils.loadAnimation(context, R.anim.photo_album_show);
         animationOut = AnimationUtils.loadAnimation(context, R.anim.photo_album_dismiss);
         initView();
     }
 
     public void initView() {
-        id_ll_root = (LinearLayout) window.findViewById(R.id.id_ll_root);
+        id_ll_root = window.findViewById(R.id.id_ll_root);
         adapter = new PictureAlbumDirectoryAdapter(context);
-        recyclerView = (RecyclerView) window.findViewById(R.id.folder_list);
+        recyclerView = window.findViewById(R.id.folder_list);
         recyclerView.getLayoutParams().height = (int) (ScreenUtils.getScreenHeight(context) * 0.6);
         recyclerView.addItemDecoration(new RecycleViewDivider(
                 context, LinearLayoutManager.HORIZONTAL, ScreenUtils.dip2px(context, 0), ContextCompat.getColor(context, R.color.transparent)));
@@ -85,8 +85,8 @@ public class FolderPopWindow extends PopupWindow implements View.OnClickListener
         adapter.bindFolderData(folders);
     }
 
-    public void setPictureTitleView(TextView picture_title) {
-        this.picture_title = picture_title;
+    public void setPictureTitleView(TextView tvPictureTitle) {
+        this.tvPictureTitle = tvPictureTitle;
     }
 
     @Override
@@ -101,7 +101,8 @@ public class FolderPopWindow extends PopupWindow implements View.OnClickListener
             super.showAsDropDown(anchor);
             isDismiss = false;
             recyclerView.startAnimation(animationIn);
-            StringUtils.modifyTextViewDrawable(picture_title, drawableUp, 2);
+            tvPictureTitle.setCompoundDrawablesRelativeWithIntrinsicBounds
+                    (null, null, drawableUp, null);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -116,7 +117,8 @@ public class FolderPopWindow extends PopupWindow implements View.OnClickListener
         if (isDismiss) {
             return;
         }
-        StringUtils.modifyTextViewDrawable(picture_title, drawableDown, 2);
+        tvPictureTitle.setCompoundDrawablesRelativeWithIntrinsicBounds
+                (null, null, drawableDown, null);
         isDismiss = true;
         recyclerView.startAnimation(animationOut);
         dismiss();
@@ -147,12 +149,7 @@ public class FolderPopWindow extends PopupWindow implements View.OnClickListener
      * 在android4.1.1和4.1.2版本关闭PopWindow
      */
     private void dismiss4Pop() {
-        new Handler().post(new Runnable() {
-            @Override
-            public void run() {
-                FolderPopWindow.super.dismiss();
-            }
-        });
+        new Handler().post(() -> FolderPopWindow.super.dismiss());
     }
 
 

@@ -24,6 +24,7 @@ import com.luck.picture.lib.config.PictureMimeType;
 import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.photoview.OnViewTapListener;
 import com.luck.picture.lib.photoview.PhotoView;
+import com.luck.picture.lib.tools.MediaUtils;
 import com.luck.picture.lib.widget.longimage.ImageSource;
 import com.luck.picture.lib.widget.longimage.ImageViewState;
 import com.luck.picture.lib.widget.longimage.SubsamplingScaleImageView;
@@ -79,15 +80,15 @@ public class SimpleFragmentAdapter extends PagerAdapter {
         final View contentView = LayoutInflater.from(container.getContext())
                 .inflate(R.layout.picture_image_preview, container, false);
         // 常规图控件
-        final PhotoView imageView = (PhotoView) contentView.findViewById(R.id.preview_image);
+        final PhotoView imageView = contentView.findViewById(R.id.preview_image);
         // 长图控件
-        final SubsamplingScaleImageView longImg = (SubsamplingScaleImageView) contentView.findViewById(R.id.longImg);
+        final SubsamplingScaleImageView longImg = contentView.findViewById(R.id.longImg);
 
-        ImageView iv_play = (ImageView) contentView.findViewById(R.id.iv_play);
+        ImageView iv_play = contentView.findViewById(R.id.iv_play);
         LocalMedia media = images.get(position);
         if (media != null) {
-            final String pictureType = media.getPictureType();
-            boolean eqVideo = pictureType.startsWith(PictureConfig.VIDEO);
+            final String mimeType = media.getMimeType();
+            boolean eqVideo = mimeType.startsWith(PictureConfig.VIDEO);
             iv_play.setVisibility(eqVideo ? View.VISIBLE : View.GONE);
             final String path;
             if (media.isCut() && !media.isCompressed()) {
@@ -99,8 +100,8 @@ public class SimpleFragmentAdapter extends PagerAdapter {
             } else {
                 path = media.getPath();
             }
-            boolean isGif = PictureMimeType.isGif(pictureType);
-            final boolean eqLongImg = PictureMimeType.isLongImg(media);
+            boolean isGif = PictureMimeType.isGif(mimeType);
+            final boolean eqLongImg = MediaUtils.isLongImg(media);
             imageView.setVisibility(eqLongImg && !isGif ? View.GONE : View.VISIBLE);
             longImg.setVisibility(eqLongImg && !isGif ? View.VISIBLE : View.GONE);
             // 压缩过的gif就不是gif了

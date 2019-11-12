@@ -322,6 +322,8 @@ public class PictureMultiCuttingActivity extends AppCompatActivity {
     private void setupViews(@NonNull Intent intent) {
         scaleEnabled = intent.getBooleanExtra(UCropMulti.Options.EXTRA_SCALE, false);
         rotateEnabled = intent.getBooleanExtra(UCropMulti.Options.EXTRA_ROTATE, false);
+        // 是否可拖动裁剪框
+        isDragFrame = intent.getBooleanExtra(UCrop.Options.EXTRA_DRAG_CROP_FRAME, true);
 
         mStatusBarColor = intent.getIntExtra(UCropMulti.Options.EXTRA_STATUS_BAR_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_statusbar));
         mToolbarColor = intent.getIntExtra(UCropMulti.Options.EXTRA_TOOL_BAR_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_toolbar));
@@ -349,8 +351,14 @@ public class PictureMultiCuttingActivity extends AppCompatActivity {
         initiateRootViews();
 
         if (mShowBottomControls) {
-            ViewGroup photoBox = (ViewGroup) findViewById(R.id.ucrop_mulit_photobox);
+            ViewGroup photoBox = findViewById(R.id.ucrop_mulit_photobox);
             View.inflate(this, R.layout.ucrop_controls, photoBox);
+
+            ((RelativeLayout.LayoutParams) recyclerView.getLayoutParams())
+                    .addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, 0);
+
+            ((RelativeLayout.LayoutParams) recyclerView.getLayoutParams())
+                    .addRule(RelativeLayout.ABOVE, R.id.wrapper_controls);
 
             mWrapperStateAspectRatio = (ViewGroup) findViewById(R.id.state_aspect_ratio);
             mWrapperStateAspectRatio.setOnClickListener(mStateClickListener);
@@ -367,6 +375,12 @@ public class PictureMultiCuttingActivity extends AppCompatActivity {
             setupRotateWidget();
             setupScaleWidget();
             setupStatesWrapper();
+        } else {
+            ((RelativeLayout.LayoutParams) recyclerView.getLayoutParams())
+                    .addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+
+            ((RelativeLayout.LayoutParams) recyclerView.getLayoutParams())
+                    .addRule(RelativeLayout.ABOVE, 0);
         }
     }
 
@@ -741,6 +755,19 @@ public class PictureMultiCuttingActivity extends AppCompatActivity {
         // 预览图 一页5个,裁剪到第6个的时候滚动到最新位置，不然预览图片看不到
         if (cutIndex >= 5) {
             recyclerView.scrollToPosition(cutIndex);
+        }
+        if (mShowBottomControls) {
+            ((RelativeLayout.LayoutParams) recyclerView.getLayoutParams())
+                    .addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, 0);
+
+            ((RelativeLayout.LayoutParams) recyclerView.getLayoutParams())
+                    .addRule(RelativeLayout.ABOVE, R.id.wrapper_controls);
+        } else {
+            ((RelativeLayout.LayoutParams) recyclerView.getLayoutParams())
+                    .addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+
+            ((RelativeLayout.LayoutParams) recyclerView.getLayoutParams())
+                    .addRule(RelativeLayout.ABOVE, 0);
         }
     }
 

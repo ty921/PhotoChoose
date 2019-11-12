@@ -31,6 +31,8 @@ public class SimpleActivity extends AppCompatActivity implements View.OnClickLis
                 intent = new Intent(SimpleActivity.this, PhotoFragmentActivity.class);
                 startActivity(intent);
                 break;
+            default:
+                break;
         }
     }
 }

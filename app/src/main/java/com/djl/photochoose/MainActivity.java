@@ -25,7 +25,6 @@ import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.permissions.RxPermissions;
 import com.luck.picture.lib.tools.PictureFileUtils;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,38 +48,42 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             cb_showCropFrame, cb_preview_audio;
     private int themeId;
     private int chooseMode = PictureMimeType.ofAll();
+    private boolean isChangeStatusBarFontColor;
+    private int statusBarColorPrimaryDark;
+    private int upResId, downResId;
+    private boolean isOpenStyleCheckNumMode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         themeId = R.style.picture_default_style;
-        minus = (ImageView) findViewById(R.id.minus);
-        plus = (ImageView) findViewById(R.id.plus);
-        tv_select_num = (TextView) findViewById(R.id.tv_select_num);
-        rgb_crop = (RadioGroup) findViewById(R.id.rgb_crop);
-        rgb_style = (RadioGroup) findViewById(R.id.rgb_style);
-        rgb_photo_mode = (RadioGroup) findViewById(R.id.rgb_photo_mode);
-        cb_voice = (CheckBox) findViewById(R.id.cb_voice);
-        cb_choose_mode = (CheckBox) findViewById(R.id.cb_choose_mode);
-        cb_isCamera = (CheckBox) findViewById(R.id.cb_isCamera);
-        cb_isGif = (CheckBox) findViewById(R.id.cb_isGif);
-        cb_preview_img = (CheckBox) findViewById(R.id.cb_preview_img);
-        cb_preview_video = (CheckBox) findViewById(R.id.cb_preview_video);
-        cb_crop = (CheckBox) findViewById(R.id.cb_crop);
-        cb_styleCrop = (CheckBox) findViewById(R.id.cb_styleCrop);
-        cb_compress = (CheckBox) findViewById(R.id.cb_compress);
-        cb_mode = (CheckBox) findViewById(R.id.cb_mode);
-        cb_showCropGrid = (CheckBox) findViewById(R.id.cb_showCropGrid);
-        cb_showCropFrame = (CheckBox) findViewById(R.id.cb_showCropFrame);
-        cb_preview_audio = (CheckBox) findViewById(R.id.cb_preview_audio);
-        cb_hide = (CheckBox) findViewById(R.id.cb_hide);
-        cb_crop_circular = (CheckBox) findViewById(R.id.cb_crop_circular);
+        minus = findViewById(R.id.minus);
+        plus = findViewById(R.id.plus);
+        tv_select_num = findViewById(R.id.tv_select_num);
+        rgb_crop = findViewById(R.id.rgb_crop);
+        rgb_style = findViewById(R.id.rgb_style);
+        rgb_photo_mode = findViewById(R.id.rgb_photo_mode);
+        cb_voice = findViewById(R.id.cb_voice);
+        cb_choose_mode = findViewById(R.id.cb_choose_mode);
+        cb_isCamera = findViewById(R.id.cb_isCamera);
+        cb_isGif = findViewById(R.id.cb_isGif);
+        cb_preview_img = findViewById(R.id.cb_preview_img);
+        cb_preview_video = findViewById(R.id.cb_preview_video);
+        cb_crop = findViewById(R.id.cb_crop);
+        cb_styleCrop = findViewById(R.id.cb_styleCrop);
+        cb_compress = findViewById(R.id.cb_compress);
+        cb_mode = findViewById(R.id.cb_mode);
+        cb_showCropGrid = findViewById(R.id.cb_showCropGrid);
+        cb_showCropFrame = findViewById(R.id.cb_showCropFrame);
+        cb_preview_audio = findViewById(R.id.cb_preview_audio);
+        cb_hide = findViewById(R.id.cb_hide);
+        cb_crop_circular = findViewById(R.id.cb_crop_circular);
         rgb_crop.setOnCheckedChangeListener(this);
         rgb_style.setOnCheckedChangeListener(this);
         rgb_photo_mode.setOnCheckedChangeListener(this);
-        recyclerView = (RecyclerView) findViewById(R.id.recycler);
-        left_back = (ImageView) findViewById(R.id.left_back);
+        recyclerView = findViewById(R.id.recycler);
+        left_back = findViewById(R.id.left_back);
         left_back.setOnClickListener(this);
         minus.setOnClickListener(this);
         plus.setOnClickListener(this);
@@ -93,28 +96,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         adapter.setList(selectList);
         adapter.setSelectMax(maxSelectNum);
         recyclerView.setAdapter(adapter);
-        adapter.setOnItemClickListener(new GridImageAdapter.OnItemClickListener() {
-            @Override
-            public void onItemClick(int position, View v) {
-                if (selectList.size() > 0) {
-                    LocalMedia media = selectList.get(position);
-                    String pictureType = media.getPictureType();
-                    int mediaType = PictureMimeType.pictureToVideo(pictureType);
-                    switch (mediaType) {
-                        case 1:
-                            // 预览图片 可自定长按保存路径
-                            //PictureSelector.create(MainActivity.this).themeStyle(themeId).externalPicturePreview(position, "/custom_file", selectList);
-                            PictureSelector.create(MainActivity.this).themeStyle(themeId).openExternalPreview(position, selectList);
-                            break;
-                        case 2:
-                            // 预览视频
-                            PictureSelector.create(MainActivity.this).externalPictureVideo(media.getPath());
-                            break;
-                        case 3:
-                            // 预览音频
-                            PictureSelector.create(MainActivity.this).externalPictureAudio(media.getPath());
-                            break;
-                    }
+        adapter.setOnItemClickListener((position, v) -> {
+            if (selectList.size() > 0) {
+                LocalMedia media = selectList.get(position);
+                String mimeType = media.getMimeType();
+                int mediaType = PictureMimeType.getMimeType(mimeType);
+                switch (mediaType) {
+                    case PictureConfig.TYPE_VIDEO:
+                        // 预览视频
+                        PictureSelector.create(MainActivity.this).externalPictureVideo(media.getPath());
+                        break;
+                    case PictureConfig.TYPE_AUDIO:
+                        // 预览音频
+                        PictureSelector.create(MainActivity.this).externalPictureAudio(media.getPath());
+                        break;
+                    default:
+                        // 预览图片 可自定长按保存路径
+                        PictureSelector.create(MainActivity.this).themeStyle(themeId).openExternalPreview(position, selectList);
+                        break;
                 }
             }
         });
@@ -129,7 +128,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onNext(Boolean aBoolean) {
                 if (aBoolean) {
-                    PictureFileUtils.deleteCacheDirFile(MainActivity.this);
+                    PictureFileUtils.deleteCacheDirFile(MainActivity.this, PictureMimeType.ofImage());
                 } else {
                     Toast.makeText(MainActivity.this,
                             getString(R.string.picture_jurisdiction), Toast.LENGTH_SHORT).show();
@@ -159,18 +158,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         .maxSelectNum(maxSelectNum)// 最大图片选择数量
                         .minSelectNum(1)// 最小选择数量
                         .imageSpanCount(4)// 每行显示个数
+                        .cameraFileName("")// 使用相机时保存至本地的文件名称,注意这个只在拍照时可以使用，选图时不要用
                         .selectionMode(cb_choose_mode.isChecked() ?
                                 PictureConfig.MULTIPLE : PictureConfig.SINGLE)// 多选 or 单选
+                        .isSingleDirectReturn(false)// 单选模式下是否直接返回
                         .previewImage(cb_preview_img.isChecked())// 是否可预览图片
                         .previewVideo(cb_preview_video.isChecked())// 是否可预览视频
                         .enablePreviewAudio(cb_preview_audio.isChecked()) // 是否可播放音频
                         .isCamera(cb_isCamera.isChecked())// 是否显示拍照按钮
+                        .isChangeStatusBarFontColor(isChangeStatusBarFontColor)// 是否关闭白色状态栏字体颜色
+                        .setStatusBarColorPrimaryDark(statusBarColorPrimaryDark)// 状态栏背景色
+                        .setUpArrowDrawable(upResId)// 设置标题栏右侧箭头图标
+                        .setDownArrowDrawable(downResId)// 设置标题栏右侧箭头图标
+                        .isOpenStyleCheckNumMode(isOpenStyleCheckNumMode)// 是否开启数字选择模式 类似QQ相册
                         .isZoomAnim(true)// 图片列表点击 缩放效果 默认true
                         //.imageFormat(PictureMimeType.PNG)// 拍照保存图片格式后缀,默认jpeg
                         //.setOutputCameraPath("/CustomPath")// 自定义拍照保存路径
                         .enableCrop(cb_crop.isChecked())// 是否裁剪
                         .compress(cb_compress.isChecked())// 是否压缩
-                        .synOrAsy(true)//同步true或异步false 压缩 默认同步
+                        .synOrAsy(false)//同步true或异步false 压缩 默认同步
                         //.compressSavePath(getPath())//压缩图片保存地址
                         //.sizeMultiplier(0.5f)// glide 加载图片大小 0~1之间 如设置 .glideOverride()无效
                         .glideOverride(160, 160)// glide 加载宽高，越小图片列表越流畅，但会影响列表图片浏览的清晰度
@@ -209,6 +215,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         .previewVideo(cb_preview_video.isChecked())// 是否可预览视频
                         .enablePreviewAudio(cb_preview_audio.isChecked()) // 是否可播放音频
                         .isCamera(cb_isCamera.isChecked())// 是否显示拍照按钮
+                        .isChangeStatusBarFontColor(isChangeStatusBarFontColor)// 是否关闭白色状态栏字体颜色
+                        .setStatusBarColorPrimaryDark(statusBarColorPrimaryDark)// 状态栏背景色
+                        .isOpenStyleCheckNumMode(isOpenStyleCheckNumMode)// 是否开启数字选择模式 类似QQ相册
+                        .setUpArrowDrawable(upResId)// 设置标题栏右侧箭头图标
+                        .setDownArrowDrawable(downResId)// 设置标题栏右侧箭头图标
                         .enableCrop(cb_crop.isChecked())// 是否裁剪
                         .compress(cb_compress.isChecked())// 是否压缩
                         .glideOverride(160, 160)// glide 加载宽高，越小图片列表越流畅，但会影响列表图片浏览的清晰度
@@ -249,10 +260,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     // 2.media.getCutPath();为裁剪后path，需判断media.isCut();是否为true
                     // 3.media.getCompressPath();为压缩后path，需判断media.isCompressed();是否为true
                     // 如果裁剪并压缩了，已取压缩路径为准，因为是先裁剪后压缩的
+                    // 4.media.getAndroidQToPath();为Android Q版本特有返回的字段，此字段有值就用来做上传使用
                     for (LocalMedia media : selectList) {
                         Log.i(TAG, "压缩---->" + media.getCompressPath());
                         Log.i(TAG, "原图---->" + media.getPath());
                         Log.i(TAG, "裁剪---->" + media.getCutPath());
+                        Log.i(TAG, "Android Q 特有Path---->" + media.getAndroidQToPath());
                     }
                     adapter.setList(selectList);
                     adapter.notifyDataSetChanged();
@@ -353,15 +366,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.rb_default_style:
                 themeId = R.style.picture_default_style;
+                isChangeStatusBarFontColor = false;
+                statusBarColorPrimaryDark = R.color.bar_grey;
+                upResId = R.drawable.arrow_up;
+                downResId = R.drawable.arrow_down;
+                isOpenStyleCheckNumMode = false;
                 break;
             case R.id.rb_white_style:
                 themeId = R.style.picture_white_style;
+                isChangeStatusBarFontColor = true;
+                statusBarColorPrimaryDark = R.color.white;
+                upResId = R.drawable.orange_arrow_up;
+                downResId = R.drawable.orange_arrow_down;
+                isOpenStyleCheckNumMode = false;
                 break;
             case R.id.rb_num_style:
                 themeId = R.style.picture_QQ_style;
+                isChangeStatusBarFontColor = false;
+                statusBarColorPrimaryDark = R.color.blue;
+                upResId = R.drawable.arrow_up;
+                downResId = R.drawable.arrow_down;
+                isOpenStyleCheckNumMode = true;
                 break;
             case R.id.rb_sina_style:
                 themeId = R.style.picture_Sina_style;
+                isChangeStatusBarFontColor = true;
+                statusBarColorPrimaryDark = R.color.white;
+                upResId = R.drawable.orange_arrow_up;
+                downResId = R.drawable.orange_arrow_down;
+                isOpenStyleCheckNumMode = false;
                 break;
         }
     }
@@ -399,19 +432,5 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
         }
-    }
-
-    /**
-     * 自定义压缩存储地址
-     *
-     * @return
-     */
-    private String getPath() {
-        String path = Environment.getExternalStorageDirectory() + "/Luban/image/";
-        File file = new File(path);
-        if (file.mkdirs()) {
-            return path;
-        }
-        return path;
     }
 }

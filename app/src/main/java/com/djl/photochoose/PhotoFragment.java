@@ -65,32 +65,32 @@ public class PhotoFragment extends Fragment implements View.OnClickListener,
 
     private void init() {
         themeId = R.style.picture_default_style;
-        minus = (ImageView) rootView.findViewById(R.id.minus);
-        plus = (ImageView) rootView.findViewById(R.id.plus);
-        tv_select_num = (TextView) rootView.findViewById(R.id.tv_select_num);
-        rgb_crop = (RadioGroup) rootView.findViewById(R.id.rgb_crop);
-        rgb_style = (RadioGroup) rootView.findViewById(R.id.rgb_style);
-        rgb_photo_mode = (RadioGroup) rootView.findViewById(R.id.rgb_photo_mode);
-        cb_voice = (CheckBox) rootView.findViewById(R.id.cb_voice);
-        cb_choose_mode = (CheckBox) rootView.findViewById(R.id.cb_choose_mode);
-        cb_isCamera = (CheckBox) rootView.findViewById(R.id.cb_isCamera);
-        cb_isGif = (CheckBox) rootView.findViewById(R.id.cb_isGif);
-        cb_preview_img = (CheckBox) rootView.findViewById(R.id.cb_preview_img);
-        cb_preview_video = (CheckBox) rootView.findViewById(R.id.cb_preview_video);
-        cb_crop = (CheckBox) rootView.findViewById(R.id.cb_crop);
-        cb_styleCrop = (CheckBox) rootView.findViewById(R.id.cb_styleCrop);
-        cb_compress = (CheckBox) rootView.findViewById(R.id.cb_compress);
-        cb_mode = (CheckBox) rootView.findViewById(R.id.cb_mode);
-        cb_showCropGrid = (CheckBox) rootView.findViewById(R.id.cb_showCropGrid);
-        cb_showCropFrame = (CheckBox) rootView.findViewById(R.id.cb_showCropFrame);
-        cb_preview_audio = (CheckBox) rootView.findViewById(R.id.cb_preview_audio);
-        cb_hide = (CheckBox) rootView.findViewById(R.id.cb_hide);
-        cb_crop_circular = (CheckBox) rootView.findViewById(R.id.cb_crop_circular);
+        minus = rootView.findViewById(R.id.minus);
+        plus = rootView.findViewById(R.id.plus);
+        tv_select_num = rootView.findViewById(R.id.tv_select_num);
+        rgb_crop = rootView.findViewById(R.id.rgb_crop);
+        rgb_style = rootView.findViewById(R.id.rgb_style);
+        rgb_photo_mode = rootView.findViewById(R.id.rgb_photo_mode);
+        cb_voice = rootView.findViewById(R.id.cb_voice);
+        cb_choose_mode = rootView.findViewById(R.id.cb_choose_mode);
+        cb_isCamera = rootView.findViewById(R.id.cb_isCamera);
+        cb_isGif = rootView.findViewById(R.id.cb_isGif);
+        cb_preview_img = rootView.findViewById(R.id.cb_preview_img);
+        cb_preview_video = rootView.findViewById(R.id.cb_preview_video);
+        cb_crop = rootView.findViewById(R.id.cb_crop);
+        cb_styleCrop = rootView.findViewById(R.id.cb_styleCrop);
+        cb_compress = rootView.findViewById(R.id.cb_compress);
+        cb_mode = rootView.findViewById(R.id.cb_mode);
+        cb_showCropGrid = rootView.findViewById(R.id.cb_showCropGrid);
+        cb_showCropFrame = rootView.findViewById(R.id.cb_showCropFrame);
+        cb_preview_audio = rootView.findViewById(R.id.cb_preview_audio);
+        cb_hide = rootView.findViewById(R.id.cb_hide);
+        cb_crop_circular = rootView.findViewById(R.id.cb_crop_circular);
         rgb_crop.setOnCheckedChangeListener(this);
         rgb_style.setOnCheckedChangeListener(this);
         rgb_photo_mode.setOnCheckedChangeListener(this);
-        recyclerView = (RecyclerView) rootView.findViewById(R.id.recycler);
-        left_back = (ImageView) rootView.findViewById(R.id.left_back);
+        recyclerView = rootView.findViewById(R.id.recycler);
+        left_back = rootView.findViewById(R.id.left_back);
         left_back.setOnClickListener(this);
         minus.setOnClickListener(this);
         plus.setOnClickListener(this);
@@ -103,26 +103,24 @@ public class PhotoFragment extends Fragment implements View.OnClickListener,
         adapter.setList(selectList);
         adapter.setSelectMax(maxSelectNum);
         recyclerView.setAdapter(adapter);
-        adapter.setOnItemClickListener(new GridImageAdapter.OnItemClickListener() {
-            @Override
-            public void onItemClick(int position, View v) {
-                LocalMedia media = selectList.get(position);
-                String pictureType = media.getPictureType();
-                int mediaType = PictureMimeType.pictureToVideo(pictureType);
-                switch (mediaType) {
-                    case 1:
-                        // 预览图片
-                        PictureSelector.create(PhotoFragment.this).themeStyle(themeId).openExternalPreview(position, selectList);
-                        break;
-                    case 2:
-                        // 预览视频
-                        PictureSelector.create(PhotoFragment.this).externalPictureVideo(media.getPath());
-                        break;
-                    case 3:
-                        // 预览音频
-                        PictureSelector.create(PhotoFragment.this).externalPictureAudio(media.getPath());
-                        break;
-                }
+        adapter.setOnItemClickListener((position, v) -> {
+            LocalMedia media = selectList.get(position);
+            String mimeType = media.getMimeType();
+            int mediaType = PictureMimeType.getMimeType(mimeType);
+            switch (mediaType) {
+                case PictureConfig.TYPE_VIDEO:
+                    // 预览视频
+                    PictureSelector.create(PhotoFragment.this).externalPictureVideo(media.getPath());
+                    break;
+                case PictureConfig.TYPE_AUDIO:
+                    // 预览音频
+                    PictureSelector.create(PhotoFragment.this).externalPictureAudio(media.getPath());
+                    break;
+                default:
+                    // 预览图片
+                    PictureSelector.create(PhotoFragment.this).themeStyle(themeId)
+                            .openExternalPreview(position, selectList);
+                    break;
             }
         });
     }

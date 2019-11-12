@@ -4,7 +4,6 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.graphics.PorterDuff;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
@@ -27,10 +26,10 @@ import com.luck.picture.lib.config.PictureMimeType;
 import com.luck.picture.lib.config.PictureSelectionConfig;
 import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.tools.DateUtils;
+import com.luck.picture.lib.tools.MediaUtils;
 import com.luck.picture.lib.tools.PictureFileUtils;
 import com.luck.picture.lib.tools.SdkVersionUtils;
-import com.luck.picture.lib.tools.StringUtils;
-import com.luck.picture.lib.tools.ToastManage;
+import com.luck.picture.lib.tools.ToastUtils;
 import com.luck.picture.lib.tools.VoiceUtils;
 
 import java.io.File;
@@ -62,8 +61,9 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
     private float sizeMultiplier;
     private Animation animation;
     private PictureSelectionConfig config;
-    private int mimeType;
+    private int chooseMode;
     private boolean zoomAnim;
+    private boolean isSingleDirectReturn;
     /**
      * 单选图片
      */
@@ -83,8 +83,9 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
         this.overrideHeight = config.overrideHeight;
         this.enableVoice = config.openClickSound;
         this.sizeMultiplier = config.sizeMultiplier;
-        this.mimeType = config.mimeType;
+        this.chooseMode = config.chooseMode;
         this.zoomAnim = config.zoomAnim;
+        this.isSingleDirectReturn = config.isSingleDirectReturn;
         animation = OptAnimationLoader.loadAnimation(context, R.anim.modal_in);
     }
 
@@ -158,31 +159,31 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
             final LocalMedia image = images.get(showCamera ? position - 1 : position);
             image.position = contentHolder.getAdapterPosition();
             final String path = image.getPath();
-            final String pictureType = image.getPictureType();
+            final String mimeType = image.getMimeType();
             if (is_checked_num) {
                 notifyCheckChanged(contentHolder, image);
             }
             selectImage(contentHolder, isSelected(image), false);
 
-            final int mediaMimeType = PictureMimeType.isPictureType(pictureType);
-            boolean gif = PictureMimeType.isGif(pictureType);
-
-            contentHolder.tv_isGif.setVisibility(gif ? View.VISIBLE : View.GONE);
-            if (mimeType == PictureMimeType.ofAudio()) {
-                contentHolder.tv_duration.setVisibility(View.VISIBLE);
-                Drawable drawable = ContextCompat.getDrawable(context, R.drawable.picture_audio);
-                StringUtils.modifyTextViewDrawable(contentHolder.tv_duration, drawable, 0);
+            final int mediaMimeType = PictureMimeType.isPictureType(mimeType);
+            boolean gif = PictureMimeType.isGif(mimeType);
+            contentHolder.llCheck.setVisibility(isSingleDirectReturn ? View.GONE : View.VISIBLE);
+            contentHolder.tvIsGif.setVisibility(gif ? View.VISIBLE : View.GONE);
+            if (chooseMode == PictureMimeType.ofAudio()) {
+                contentHolder.tvDuration.setVisibility(View.VISIBLE);
+                contentHolder.tvDuration.setCompoundDrawablesRelativeWithIntrinsicBounds
+                        (R.drawable.picture_audio, 0, 0, 0);
             } else {
-                Drawable drawable = ContextCompat.getDrawable(context, R.drawable.video_icon);
-                StringUtils.modifyTextViewDrawable(contentHolder.tv_duration, drawable, 0);
-                contentHolder.tv_duration.setVisibility(mediaMimeType == PictureConfig.TYPE_VIDEO
+                contentHolder.tvDuration.setCompoundDrawablesRelativeWithIntrinsicBounds
+                        (R.drawable.video_icon, 0, 0, 0);
+                contentHolder.tvDuration.setVisibility(mediaMimeType == PictureConfig.TYPE_VIDEO
                         ? View.VISIBLE : View.GONE);
             }
-            boolean eqLongImg = PictureMimeType.isLongImg(image);
-            contentHolder.tv_long_chart.setVisibility(eqLongImg ? View.VISIBLE : View.GONE);
+            boolean eqLongImg = MediaUtils.isLongImg(image);
+            contentHolder.tvLongChart.setVisibility(eqLongImg ? View.VISIBLE : View.GONE);
             long duration = image.getDuration();
-            contentHolder.tv_duration.setText(DateUtils.timeParse(duration));
-            if (mimeType == PictureMimeType.ofAudio()) {
+            contentHolder.tvDuration.setText(DateUtils.timeParse(duration));
+            if (chooseMode == PictureMimeType.ofAudio()) {
                 contentHolder.iv_picture.setImageResource(R.drawable.audio_placeholder);
             } else {
                 RequestOptions options = new RequestOptions();
@@ -201,42 +202,36 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
                         .into(contentHolder.iv_picture);
             }
             if (enablePreview || enablePreviewVideo || enablePreviewAudio) {
-                contentHolder.ll_check.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        // 如原图路径不存在或者路径存在但文件不存在
-                        String newPath = SdkVersionUtils.checkedAndroid_Q()
-                                ? PictureFileUtils.getPath(context, Uri.parse(path)) : path;
-                        if (!new File(newPath).exists()) {
-                            ToastManage.s(context, PictureMimeType.s(context, mediaMimeType));
-                            return;
-                        }
-                        changeCheckboxState(contentHolder, image);
-                    }
-                });
-            }
-            contentHolder.contentView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
+                contentHolder.llCheck.setOnClickListener(v -> {
                     // 如原图路径不存在或者路径存在但文件不存在
                     String newPath = SdkVersionUtils.checkedAndroid_Q()
                             ? PictureFileUtils.getPath(context, Uri.parse(path)) : path;
                     if (!new File(newPath).exists()) {
-                        ToastManage.s(context, PictureMimeType.s(context, mediaMimeType));
+                        ToastUtils.s(context, PictureMimeType.s(context, mediaMimeType));
                         return;
                     }
-                    int index = showCamera ? position - 1 : position;
-                    boolean eqResult =
-                            mediaMimeType == PictureConfig.TYPE_IMAGE && enablePreview
-                                    || mediaMimeType == PictureConfig.TYPE_VIDEO && (enablePreviewVideo
-                                    || selectMode == PictureConfig.SINGLE)
-                                    || mediaMimeType == PictureConfig.TYPE_AUDIO && (enablePreviewAudio
-                                    || selectMode == PictureConfig.SINGLE);
-                    if (eqResult) {
-                        imageSelectChangedListener.onPictureClick(image, index);
-                    } else {
-                        changeCheckboxState(contentHolder, image);
-                    }
+                    changeCheckboxState(contentHolder, image);
+                });
+            }
+            contentHolder.contentView.setOnClickListener(v -> {
+                // 如原图路径不存在或者路径存在但文件不存在
+                String newPath = SdkVersionUtils.checkedAndroid_Q()
+                        ? PictureFileUtils.getPath(context, Uri.parse(path)) : path;
+                if (!new File(newPath).exists()) {
+                    ToastUtils.s(context, PictureMimeType.s(context, mediaMimeType));
+                    return;
+                }
+                int index = showCamera ? position - 1 : position;
+                boolean eqResult =
+                        mediaMimeType == PictureConfig.TYPE_IMAGE && enablePreview
+                                || mediaMimeType == PictureConfig.TYPE_VIDEO && (enablePreviewVideo
+                                || selectMode == PictureConfig.SINGLE)
+                                || mediaMimeType == PictureConfig.TYPE_AUDIO && (enablePreviewAudio
+                                || selectMode == PictureConfig.SINGLE);
+                if (eqResult) {
+                    imageSelectChangedListener.onPictureClick(image, index);
+                } else {
+                    changeCheckboxState(contentHolder, image);
                 }
             });
         }
@@ -256,7 +251,7 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
             super(itemView);
             headerView = itemView;
             tv_title_camera = itemView.findViewById(R.id.tv_title_camera);
-            String title = mimeType == PictureMimeType.ofAudio() ?
+            String title = chooseMode == PictureMimeType.ofAudio() ?
                     context.getString(R.string.picture_tape)
                     : context.getString(R.string.picture_take_picture);
             tv_title_camera.setText(title);
@@ -266,19 +261,19 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
     public class ViewHolder extends RecyclerView.ViewHolder {
         ImageView iv_picture;
         TextView check;
-        TextView tv_duration, tv_isGif, tv_long_chart;
+        TextView tvDuration, tvIsGif, tvLongChart;
         View contentView;
-        LinearLayout ll_check;
+        LinearLayout llCheck;
 
         public ViewHolder(View itemView) {
             super(itemView);
             contentView = itemView;
-            iv_picture = (ImageView) itemView.findViewById(R.id.iv_picture);
-            check = (TextView) itemView.findViewById(R.id.check);
-            ll_check = (LinearLayout) itemView.findViewById(R.id.ll_check);
-            tv_duration = (TextView) itemView.findViewById(R.id.tv_duration);
-            tv_isGif = (TextView) itemView.findViewById(R.id.tv_isGif);
-            tv_long_chart = (TextView) itemView.findViewById(R.id.tv_long_chart);
+            iv_picture = itemView.findViewById(R.id.iv_picture);
+            check = itemView.findViewById(R.id.check);
+            llCheck = itemView.findViewById(R.id.ll_check);
+            tvDuration = itemView.findViewById(R.id.tv_duration);
+            tvIsGif = itemView.findViewById(R.id.tv_isGif);
+            tvLongChart = itemView.findViewById(R.id.tv_long_chart);
         }
     }
 
@@ -314,19 +309,19 @@ public class PictureImageGridAdapter extends RecyclerView.Adapter<RecyclerView.V
 
     private void changeCheckboxState(ViewHolder contentHolder, LocalMedia image) {
         boolean isChecked = contentHolder.check.isSelected();
-        String pictureType = selectImages.size() > 0 ? selectImages.get(0).getPictureType() : "";
-        if (!TextUtils.isEmpty(pictureType)) {
-            boolean toEqual = PictureMimeType.mimeToEqual(pictureType, image.getPictureType());
+        String mimeType = selectImages.size() > 0 ? selectImages.get(0).getMimeType() : "";
+        if (!TextUtils.isEmpty(mimeType)) {
+            boolean toEqual = PictureMimeType.mimeToEqual(mimeType, image.getMimeType());
             if (!toEqual) {
-                ToastManage.s(context, context.getString(R.string.picture_rule));
+                ToastUtils.s(context, context.getString(R.string.picture_rule));
                 return;
             }
         }
         if (selectImages.size() >= maxSelectNum && !isChecked) {
-            boolean eqImg = pictureType.startsWith(PictureConfig.IMAGE);
+            boolean eqImg = mimeType.startsWith(PictureConfig.IMAGE);
             String str = eqImg ? context.getString(R.string.picture_message_max_num, maxSelectNum)
                     : context.getString(R.string.picture_message_video_max_num, maxSelectNum);
-            ToastManage.s(context, str);
+            ToastUtils.s(context, str);
             return;
         }
 

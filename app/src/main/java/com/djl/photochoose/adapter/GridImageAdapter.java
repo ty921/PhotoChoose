@@ -20,6 +20,7 @@ import com.luck.picture.lib.config.PictureConfig;
 import com.luck.picture.lib.config.PictureMimeType;
 import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.tools.DateUtils;
+import com.luck.picture.lib.tools.SdkVersionUtils;
 import com.luck.picture.lib.tools.StringUtils;
 
 import java.io.File;
@@ -67,14 +68,14 @@ public class GridImageAdapter extends
     public class ViewHolder extends RecyclerView.ViewHolder {
 
         ImageView mImg;
-        LinearLayout ll_del;
-        TextView tv_duration;
+        LinearLayout llDel;
+        TextView tvDuration;
 
         public ViewHolder(View view) {
             super(view);
-            mImg = (ImageView) view.findViewById(R.id.fiv);
-            ll_del = (LinearLayout) view.findViewById(R.id.ll_del);
-            tv_duration = (TextView) view.findViewById(R.id.tv_duration);
+            mImg = view.findViewById(R.id.fiv);
+            llDel = view.findViewById(R.id.ll_del);
+            tvDuration = view.findViewById(R.id.tv_duration);
         }
     }
 
@@ -120,31 +121,23 @@ public class GridImageAdapter extends
         //少于8张，显示继续添加的图标
         if (getItemViewType(position) == TYPE_CAMERA) {
             viewHolder.mImg.setImageResource(R.drawable.addimg_1x);
-            viewHolder.mImg.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    mOnAddPicClickListener.onAddPicClick();
-                }
-            });
-            viewHolder.ll_del.setVisibility(View.INVISIBLE);
+            viewHolder.mImg.setOnClickListener(v -> mOnAddPicClickListener.onAddPicClick());
+            viewHolder.llDel.setVisibility(View.INVISIBLE);
         } else {
-            viewHolder.ll_del.setVisibility(View.VISIBLE);
-            viewHolder.ll_del.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    int index = viewHolder.getAdapterPosition();
-                    // 这里有时会返回-1造成数据下标越界,具体可参考getAdapterPosition()源码，
-                    // 通过源码分析应该是bindViewHolder()暂未绘制完成导致，知道原因的也可联系我~感谢
-                    if (index != RecyclerView.NO_POSITION) {
-                        list.remove(index);
-                        notifyItemRemoved(index);
-                        notifyItemRangeChanged(index, list.size());
-                    }
+            viewHolder.llDel.setVisibility(View.VISIBLE);
+            viewHolder.llDel.setOnClickListener(view -> {
+                int index = viewHolder.getAdapterPosition();
+                // 这里有时会返回-1造成数据下标越界,具体可参考getAdapterPosition()源码，
+                // 通过源码分析应该是bindViewHolder()暂未绘制完成导致，知道原因的也可联系我~感谢
+                if (index != RecyclerView.NO_POSITION) {
+                    list.remove(index);
+                    notifyItemRemoved(index);
+                    notifyItemRangeChanged(index, list.size());
                 }
             });
             LocalMedia media = list.get(position);
-            int mimeType = media.getMimeType();
-            String path = "";
+            int chooseModel = media.getChooseModel();
+            String path;
             if (media.isCut() && !media.isCompressed()) {
                 // 裁剪过
                 path = media.getCutPath();
@@ -153,7 +146,7 @@ public class GridImageAdapter extends
                 path = media.getCompressPath();
             } else {
                 // 原图
-                path = media.getPath();
+                path = SdkVersionUtils.checkedAndroid_Q() ? media.getAndroidQToPath() : media.getPath();
             }
             // 图片
             if (media.isCompressed()) {
@@ -162,23 +155,24 @@ public class GridImageAdapter extends
             }
 
             Log.i("原图地址::", media.getPath());
-            int pictureType = PictureMimeType.isPictureType(media.getPictureType());
+            int pictureType = PictureMimeType.isPictureType(media.getMimeType());
             if (media.isCut()) {
                 Log.i("裁剪地址::", media.getCutPath());
             }
             long duration = media.getDuration();
-            viewHolder.tv_duration.setVisibility(pictureType == PictureConfig.TYPE_VIDEO
+            viewHolder.tvDuration.setVisibility(pictureType == PictureConfig.TYPE_VIDEO
                     ? View.VISIBLE : View.GONE);
-            if (mimeType == PictureMimeType.ofAudio()) {
-                viewHolder.tv_duration.setVisibility(View.VISIBLE);
-                Drawable drawable = ContextCompat.getDrawable(context, R.drawable.picture_audio);
-                StringUtils.modifyTextViewDrawable(viewHolder.tv_duration, drawable, 0);
+            if (chooseModel == PictureMimeType.ofAudio()) {
+                viewHolder.tvDuration.setVisibility(View.VISIBLE);
+                viewHolder.tvDuration.setCompoundDrawablesRelativeWithIntrinsicBounds
+                        (R.drawable.picture_audio, 0, 0, 0);
+
             } else {
-                Drawable drawable = ContextCompat.getDrawable(context, R.drawable.video_icon);
-                StringUtils.modifyTextViewDrawable(viewHolder.tv_duration, drawable, 0);
+                viewHolder.tvDuration.setCompoundDrawablesRelativeWithIntrinsicBounds
+                        (R.drawable.video_icon, 0, 0, 0);
             }
-            viewHolder.tv_duration.setText(DateUtils.timeParse(duration));
-            if (mimeType == PictureMimeType.ofAudio()) {
+            viewHolder.tvDuration.setText(DateUtils.timeParse(duration));
+            if (chooseModel == PictureMimeType.ofAudio()) {
                 viewHolder.mImg.setImageResource(R.drawable.audio_placeholder);
             } else {
                 RequestOptions options = new RequestOptions()
@@ -192,12 +186,9 @@ public class GridImageAdapter extends
             }
             //itemView 的点击事件
             if (mItemClickListener != null) {
-                viewHolder.itemView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        int adapterPosition = viewHolder.getAdapterPosition();
-                        mItemClickListener.onItemClick(adapterPosition, v);
-                    }
+                viewHolder.itemView.setOnClickListener(v -> {
+                    int adapterPosition = viewHolder.getAdapterPosition();
+                    mItemClickListener.onItemClick(adapterPosition, v);
                 });
             }
         }

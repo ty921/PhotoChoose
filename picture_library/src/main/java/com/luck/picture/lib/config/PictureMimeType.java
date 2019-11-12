@@ -1,17 +1,14 @@
 package com.luck.picture.lib.config;
 
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
-import android.media.MediaMetadataRetriever;
 import android.net.Uri;
-import android.os.Build;
 import android.provider.MediaStore;
-import android.support.annotation.RequiresApi;
 import android.text.TextUtils;
 
 import com.luck.picture.lib.R;
-import com.luck.picture.lib.entity.LocalMedia;
 import com.luck.picture.lib.tools.PictureFileUtils;
 import com.luck.picture.lib.tools.SdkVersionUtils;
 
@@ -36,6 +33,12 @@ public final class PictureMimeType {
         return PictureConfig.TYPE_IMAGE;
     }
 
+
+    /**
+     * Audio correlation is no longer maintained
+     * 不再维护音频相关功能，但可以继续使用但会有机型兼容性问题
+     */
+    @Deprecated
     public static int ofVideo() {
         return PictureConfig.TYPE_VIDEO;
     }
@@ -46,17 +49,6 @@ public final class PictureMimeType {
 
     public static int isPictureType(String pictureType) {
         switch (pictureType) {
-            case "image/png":
-            case "image/PNG":
-            case "image/jpeg":
-            case "image/JPEG":
-            case "image/webp":
-            case "image/WEBP":
-            case "image/gif":
-            case "image/bmp":
-            case "image/GIF":
-            case "imagex-ms-bmp":
-                return PictureConfig.TYPE_IMAGE;
             case "video/3gp":
             case "video/3gpp":
             case "video/3gpp2":
@@ -80,8 +72,9 @@ public final class PictureMimeType {
             case "audio/lamr":
             case "audio/3gpp":
                 return PictureConfig.TYPE_AUDIO;
+            default:
+                return PictureConfig.TYPE_IMAGE;
         }
-        return PictureConfig.TYPE_IMAGE;
     }
 
     /**
@@ -95,24 +88,9 @@ public final class PictureMimeType {
             case "image/gif":
             case "image/GIF":
                 return true;
+            default:
+                return false;
         }
-        return false;
-    }
-
-    /**
-     * 是否是gif
-     *
-     * @param path
-     * @return
-     */
-    public static boolean isImageGif(String path) {
-        if (!TextUtils.isEmpty(path)) {
-            int lastIndex = path.lastIndexOf(".");
-            String pictureType = path.substring(lastIndex, path.length());
-            return pictureType.startsWith(".gif")
-                    || pictureType.startsWith(".GIF");
-        }
-        return false;
     }
 
     /**
@@ -135,8 +113,9 @@ public final class PictureMimeType {
             case "video/webm":
             case "video/mp2ts":
                 return true;
+            default:
+                return false;
         }
-        return false;
     }
 
     /**
@@ -192,7 +171,7 @@ public final class PictureMimeType {
         return isPictureType(p1) == isPictureType(p2);
     }
 
-    public static String createImageType(String path) {
+    public static String getImageMimeType(String path) {
         try {
             if (!TextUtils.isEmpty(path)) {
                 File file = new File(path);
@@ -208,18 +187,10 @@ public final class PictureMimeType {
         return "image/jpeg";
     }
 
-    public static String createVideoType(Context context, String path) {
+    public static String getVideoMimeType(String path) {
         try {
             if (!TextUtils.isEmpty(path)) {
-                boolean androidQ = SdkVersionUtils.checkedAndroid_Q();
-                File file;
-                if (androidQ) {
-                    String newPath = PictureFileUtils.getPath(context.getApplicationContext(),
-                            Uri.parse(path));
-                    file = new File(newPath);
-                } else {
-                    file = new File(path);
-                }
+                File file = new File(path);
                 String fileName = file.getName();
                 int last = fileName.lastIndexOf(".") + 1;
                 String temp = fileName.substring(last);
@@ -233,79 +204,46 @@ public final class PictureMimeType {
     }
 
     /**
+     * 根据uri获取MIME_TYPE
+     *
+     * @param uri
+     * @return
+     */
+    public static String getMimeType(Context context, Uri uri) {
+        if (ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) {
+            Cursor cursor = context.getApplicationContext().getContentResolver().query(uri,
+                    new String[]{MediaStore.Files.FileColumns.MIME_TYPE}, null, null, null);
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE);
+                    if (columnIndex > -1) {
+                        return cursor.getString(columnIndex);
+                    }
+                }
+                cursor.close();
+            }
+        }
+        return "image/jpeg";
+    }
+
+    /**
      * Picture or video
      *
      * @return
      */
-    public static int pictureToVideo(String pictureType) {
-        if (!TextUtils.isEmpty(pictureType)) {
-            if (pictureType.startsWith("video")) {
-                return PictureConfig.TYPE_VIDEO;
-            } else if (pictureType.startsWith("audio")) {
-                return PictureConfig.TYPE_AUDIO;
-            }
+    public static int getMimeType(String mimeType) {
+        if (TextUtils.isEmpty(mimeType)) {
+            return PictureConfig.TYPE_IMAGE;
         }
-        return PictureConfig.TYPE_IMAGE;
-    }
-
-    /**
-     * get Local video duration
-     *
-     * @return
-     */
-    public static int getLocalVideoDuration(String videoPath) {
-        int duration;
-        try {
-            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
-            mmr.setDataSource(videoPath);
-            duration = Integer.parseInt(mmr.extractMetadata
-                    (MediaMetadataRetriever.METADATA_KEY_DURATION));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return 0;
-        }
-        return duration;
-    }
-
-    /**
-     * get Local video duration
-     *
-     * @return
-     */
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public static int getLocalVideoDurationToAndroidQ(Context context, String videoPath) {
-        int duration;
-        try {
-            Cursor query = context.getApplicationContext().getContentResolver().query(Uri.parse(videoPath),
-                    null, null, null);
-            if (query != null) {
-                query.moveToFirst();
-                duration = query.getInt(query.getColumnIndexOrThrow(MediaStore.Video
-                        .Media.DURATION));
-                return duration;
-            }
-            return 0;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return 0;
+        if (mimeType.startsWith("video")) {
+            return PictureConfig.TYPE_VIDEO;
+        } else if (mimeType.startsWith("audio")) {
+            return PictureConfig.TYPE_AUDIO;
+        } else {
+            return PictureConfig.TYPE_IMAGE;
         }
     }
 
-    /**
-     * 是否是长图
-     *
-     * @param media
-     * @return true 是 or false 不是
-     */
-    public static boolean isLongImg(LocalMedia media) {
-        if (null != media) {
-            int width = media.getWidth();
-            int height = media.getHeight();
-            int h = width * 3;
-            return height > h;
-        }
-        return false;
-    }
 
     /**
      * 获取图片后缀
@@ -342,6 +280,26 @@ public final class PictureMimeType {
     }
 
     /**
+     * 获取图片后缀
+     *
+     * @param mineType
+     * @return
+     */
+    public static String getLastImgSuffix(String mineType) {
+        String defaultSuffix = ".png";
+        try {
+            int index = mineType.lastIndexOf("/") + 1;
+            if (index > 0) {
+                return "." + mineType.substring(index);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return defaultSuffix;
+        }
+        return defaultSuffix;
+    }
+
+    /**
      * 根据不同的类型，返回不同的错误提示
      *
      * @param mediaMimeType
@@ -364,4 +322,8 @@ public final class PictureMimeType {
     public final static String JPEG = ".JPEG";
 
     public final static String PNG = ".png";
+
+    public final static String MIME_TYPE_IMAGE = "image/jpeg";
+    public final static String MIME_TYPE_VIDEO = "video/mp4";
+    public final static String MIME_TYPE_AUDIO = "audio/mpeg";
 }
