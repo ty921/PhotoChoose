@@ -1,20 +1,21 @@
 package com.yalantis.ucrop;
 
 import android.app.Activity;
-import android.app.Fragment;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.support.annotation.AnimRes;
 import android.support.annotation.ColorInt;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.FloatRange;
 import android.support.annotation.IntRange;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
+
 
 import com.yalantis.ucrop.model.AspectRatio;
 
@@ -48,6 +49,10 @@ public class UCrop {
 
     public static final String EXTRA_MAX_SIZE_X = EXTRA_PREFIX + ".MaxSizeX";
     public static final String EXTRA_MAX_SIZE_Y = EXTRA_PREFIX + ".MaxSizeY";
+
+    public static final String EXTRA_WINDOW_EXIT_ANIMATION = EXTRA_PREFIX + ".WindowAnimation";
+
+    public static final String EXTRA_NAV_BAR_COLOR = EXTRA_PREFIX + ".navBarColor";
 
     private Intent mCropIntent;
     private Bundle mCropOptionsBundle;
@@ -107,6 +112,30 @@ public class UCrop {
     public UCrop withOptions(@NonNull Options options) {
         mCropOptionsBundle.putAll(options.getOptionBundle());
         return this;
+    }
+
+    /**
+     * Send the crop Intent from animation an Activity
+     *
+     * @param activity Activity to receive result
+     */
+    public void startAnimation(@NonNull Activity activity, @AnimRes int activityCropEnterAnimation) {
+        if (activityCropEnterAnimation != 0) {
+            start(activity, REQUEST_CROP, activityCropEnterAnimation);
+        } else {
+            start(activity, REQUEST_CROP);
+        }
+    }
+
+    /**
+     * Send the crop Intent from an Activity with a custom request code or animation
+     *
+     * @param activity    Activity to receive result
+     * @param requestCode requestCode for result
+     */
+    public void start(@NonNull Activity activity, int requestCode, @AnimRes int activityCropEnterAnimation) {
+        activity.startActivityForResult(getIntent(activity), requestCode);
+        activity.overridePendingTransition(activityCropEnterAnimation, R.anim.ucrop_anim_fade_in);
     }
 
     /**
@@ -244,6 +273,8 @@ public class UCrop {
         public static final String EXTRA_UCROP_TITLE_TEXT_TOOLBAR = EXTRA_PREFIX + ".UcropToolbarTitleText";
         public static final String EXTRA_UCROP_WIDGET_CANCEL_DRAWABLE = EXTRA_PREFIX + ".UcropToolbarCancelDrawable";
         public static final String EXTRA_UCROP_WIDGET_CROP_DRAWABLE = EXTRA_PREFIX + ".UcropToolbarCropDrawable";
+
+        public static final String EXTRA_UCROP_WIDGET_CROP_OPEN_WHITE_STATUSBAR = EXTRA_PREFIX + ".openWhiteStatusBar";
 
         public static final String EXTRA_UCROP_LOGO_COLOR = EXTRA_PREFIX + ".UcropLogoColor";
 
@@ -439,6 +470,13 @@ public class UCrop {
         }
 
         /**
+         * @param openWhiteStatusBar - Change the status bar font color
+         */
+        public void isOpenWhiteStatusBar(boolean openWhiteStatusBar) {
+            mOptionBundle.putBoolean(EXTRA_UCROP_WIDGET_CROP_OPEN_WHITE_STATUSBAR, openWhiteStatusBar);
+        }
+
+        /**
          * @param text - desired text for Toolbar title
          */
         public void setToolbarTitle(@Nullable String text) {
@@ -549,6 +587,19 @@ public class UCrop {
             mOptionBundle.putInt(EXTRA_MAX_SIZE_Y, height);
         }
 
+        /**
+         * @param activityCropExitAnimation activity exit animation
+         */
+        public void setCropExitAnimation(@AnimRes int activityCropExitAnimation) {
+            mOptionBundle.putInt(EXTRA_WINDOW_EXIT_ANIMATION, activityCropExitAnimation);
+        }
+
+        /**
+         * @param navBarColor set NavBar Color
+         */
+        public void setNavBarColor(@ColorInt int navBarColor) {
+            mOptionBundle.putInt(EXTRA_NAV_BAR_COLOR, navBarColor);
+        }
     }
 
 }

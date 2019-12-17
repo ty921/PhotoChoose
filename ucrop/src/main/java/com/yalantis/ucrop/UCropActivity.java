@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
 import android.support.annotation.ColorInt;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.IdRes;
@@ -33,8 +34,11 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+
 import com.yalantis.ucrop.callback.BitmapCropCallback;
+import com.yalantis.ucrop.immersion.CropImmersiveManage;
 import com.yalantis.ucrop.model.AspectRatio;
+import com.yalantis.ucrop.util.FileUtils;
 import com.yalantis.ucrop.util.SelectedStateListDrawable;
 import com.yalantis.ucrop.view.CropImageView;
 import com.yalantis.ucrop.view.GestureCropImageView;
@@ -44,6 +48,7 @@ import com.yalantis.ucrop.view.UCropView;
 import com.yalantis.ucrop.view.widget.AspectRatioTextView;
 import com.yalantis.ucrop.view.widget.HorizontalProgressWheelView;
 
+import java.io.FileInputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -115,15 +120,38 @@ public class UCropActivity extends AppCompatActivity {
     /**
      * 图片是否可拖动或旋转
      */
-    private boolean scaleEnabled, rotateEnabled;
+    private boolean scaleEnabled, rotateEnabled, openWhiteStatusBar;
+
+    /**
+     * 是否使用沉浸式，子类复写该方法来确定是否采用沉浸式
+     *
+     * @return 是否沉浸式，默认true
+     */
+    @Override
+    public boolean isImmersive() {
+        return true;
+    }
+
+
+    /**
+     * 具体沉浸的样式，可以根据需要自行修改状态栏和导航栏的颜色
+     */
+    public void immersive() {
+        CropImmersiveManage.immersiveAboveAPI23(this
+                , mStatusBarColor
+                , mToolbarColor
+                , openWhiteStatusBar);
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.ucrop_activity_photobox);
-
         final Intent intent = getIntent();
-
+        getIntentData(intent);
+        if (isImmersive()) {
+            immersive();
+        }
+        setContentView(R.layout.ucrop_activity_photobox);
         setupViews(intent);
         setImageData(intent);
         setInitialState();
@@ -178,6 +206,12 @@ public class UCropActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        exitAnimation();
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
         if (mGestureCropImageView != null) {
@@ -195,8 +229,12 @@ public class UCropActivity extends AppCompatActivity {
 
         if (inputUri != null && outputUri != null) {
             try {
-                mGestureCropImageView.setRotateEnabled(rotateEnabled);
-                mGestureCropImageView.setScaleEnabled(scaleEnabled);
+                ParcelFileDescriptor parcelFileDescriptor = getContentResolver().openFileDescriptor(inputUri, "r");
+                FileInputStream inputStream = new FileInputStream(parcelFileDescriptor.getFileDescriptor());
+                String suffix = FileUtils.extSuffix(inputStream);
+                boolean isGif = FileUtils.isGifForSuffix(suffix);
+                mGestureCropImageView.setRotateEnabled(isGif ? false : rotateEnabled);
+                mGestureCropImageView.setScaleEnabled(isGif ? false : scaleEnabled);
                 mGestureCropImageView.setImageUri(inputUri, outputUri);
             } catch (Exception e) {
                 setResultError(e);
@@ -282,6 +320,20 @@ public class UCropActivity extends AppCompatActivity {
         }
     }
 
+
+    private void getIntentData(@NonNull Intent intent) {
+        openWhiteStatusBar = intent.getBooleanExtra(UCrop.Options.EXTRA_UCROP_WIDGET_CROP_OPEN_WHITE_STATUSBAR, false);
+        mStatusBarColor = intent.getIntExtra(UCrop.Options.EXTRA_STATUS_BAR_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_statusbar));
+        mToolbarColor = intent.getIntExtra(UCrop.Options.EXTRA_TOOL_BAR_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_toolbar));
+        if (mToolbarColor == 0) {
+            mToolbarColor = ContextCompat.getColor(this, R.color.ucrop_color_toolbar);
+        }
+        if (mStatusBarColor == 0) {
+            mStatusBarColor = ContextCompat.getColor(this, R.color.ucrop_color_statusbar);
+        }
+
+    }
+
     private void setupViews(@NonNull Intent intent) {
         scaleEnabled = intent.getBooleanExtra(UCrop.Options.EXTRA_SCALE, true);
 
@@ -290,18 +342,9 @@ public class UCropActivity extends AppCompatActivity {
         // 是否可拖动裁剪框
         isDragFrame = intent.getBooleanExtra(UCrop.Options.EXTRA_DRAG_CROP_FRAME, true);
 
-        mStatusBarColor = intent.getIntExtra(UCrop.Options.EXTRA_STATUS_BAR_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_statusbar));
-        mToolbarColor = intent.getIntExtra(UCrop.Options.EXTRA_TOOL_BAR_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_toolbar));
-        if (mToolbarColor == -1) {
-            mToolbarColor = ContextCompat.getColor(this, R.color.ucrop_color_toolbar);
-        }
-        if (mStatusBarColor == -1) {
-            mStatusBarColor = ContextCompat.getColor(this, R.color.ucrop_color_statusbar);
-        }
-
         mActiveWidgetColor = intent.getIntExtra(UCrop.Options.EXTRA_UCROP_COLOR_WIDGET_ACTIVE, ContextCompat.getColor(this, R.color.ucrop_color_widget_active));
         mToolbarWidgetColor = intent.getIntExtra(UCrop.Options.EXTRA_UCROP_WIDGET_COLOR_TOOLBAR, ContextCompat.getColor(this, R.color.ucrop_color_toolbar_widget));
-        if (mToolbarWidgetColor == -1) {
+        if (mToolbarWidgetColor == 0) {
             mToolbarWidgetColor = ContextCompat.getColor(this, R.color.ucrop_color_toolbar_widget);
         }
         mToolbarCancelDrawable = intent.getIntExtra(UCrop.Options.EXTRA_UCROP_WIDGET_CANCEL_DRAWABLE, R.drawable.ucrop_ic_cross);
@@ -311,7 +354,7 @@ public class UCropActivity extends AppCompatActivity {
         mLogoColor = intent.getIntExtra(UCrop.Options.EXTRA_UCROP_LOGO_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_default_logo));
         mShowBottomControls = !intent.getBooleanExtra(UCrop.Options.EXTRA_HIDE_BOTTOM_CONTROLS, false);
         mRootViewBackgroundColor = intent.getIntExtra(UCrop.Options.EXTRA_UCROP_ROOT_VIEW_BACKGROUND_COLOR, ContextCompat.getColor(this, R.color.ucrop_color_crop_background));
-
+        setNavBar();
         setupAppBar();
         initiateRootViews();
 
@@ -334,6 +377,18 @@ public class UCropActivity extends AppCompatActivity {
             setupRotateWidget();
             setupScaleWidget();
             setupStatesWrapper();
+        }
+    }
+
+    /**
+     * set NavBar Color
+     */
+    private void setNavBar() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            int navBarColor = getIntent().getIntExtra(UCrop.EXTRA_NAV_BAR_COLOR, 0);
+            if (navBarColor != 0) {
+                getWindow().setNavigationBarColor(navBarColor);
+            }
         }
     }
 
@@ -674,8 +729,16 @@ public class UCropActivity extends AppCompatActivity {
         setResult(UCrop.RESULT_ERROR, new Intent().putExtra(UCrop.EXTRA_ERROR, throwable));
     }
 
+    /**
+     * exit activity
+     */
     protected void closeActivity() {
         finish();
-        overridePendingTransition(0, R.anim.ucrop_close);
+        exitAnimation();
+    }
+
+    protected void exitAnimation() {
+        int exitAnimation = getIntent().getIntExtra(UCrop.EXTRA_WINDOW_EXIT_ANIMATION, 0);
+        overridePendingTransition(R.anim.ucrop_anim_fade_in, exitAnimation != 0 ? exitAnimation : R.anim.ucrop_close);
     }
 }

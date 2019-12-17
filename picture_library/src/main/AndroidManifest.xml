@@ -2,8 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.luck.picture.lib">
 
-    <application android:theme="@style/AppTheme">
-
+    <application>
         <provider
             android:name="com.luck.picture.lib.PictureFileProvider"
             android:authorities="${applicationId}.provider"
@@ -13,19 +12,42 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
         <activity
             android:name=".PictureSelectorActivity"
-            android:windowSoftInputMode="adjustPan" />
-        <activity android:name=".PicturePreviewActivity" />
+            android:configChanges="orientation|keyboardHidden|screenSize" />
+        <activity
+            android:name=".PictureSelectorWeChatStyleActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize" />
+        <activity
+            android:name=".PictureSelectorCameraEmptyActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:theme="@style/Picture.Theme.Translucent" />
+
+        <activity
+            android:name=".PicturePreviewActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize" />
+        <activity
+            android:name=".PictureSelectorPreviewWeChatStyleActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize" />
         <activity
             android:name=".PictureVideoPlayActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="sensor" />
-        <activity android:name=".PictureExternalPreviewActivity" />
-        <activity android:name="com.yalantis.ucrop.UCropActivity" />
-        <activity android:name="com.yalantis.ucrop.PictureMultiCuttingActivity" />
-        <activity android:name=".PicturePlayAudioActivity" />
+        <activity
+            android:name=".PictureExternalPreviewActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize" />
 
+        <activity
+            android:name=".PicturePlayAudioActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize" />
+
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:theme="@style/Base.Theme.NoActionBar" />
+        <activity
+            android:name="com.yalantis.ucrop.PictureMultiCuttingActivity"
+            android:theme="@style/Base.Theme.NoActionBar" />
 
     </application>
 

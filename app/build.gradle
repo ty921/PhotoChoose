@@ -41,7 +41,7 @@ dependencies {
     //noinspection GradleCompatible
     implementation "com.android.support:recyclerview-v7:$var.supportLibraryVersion"
     implementation "com.github.bumptech.glide:glide:$var.glideVersion"
-    implementation "io.reactivex.rxjava2:rxjava:$var.rxjava2Version"
-    implementation "io.reactivex.rxjava2:rxandroid:$var.rxandroidVersion"
+//    implementation "io.reactivex.rxjava2:rxjava:$var.rxjava2Version"
+//    implementation "io.reactivex.rxjava2:rxandroid:$var.rxandroidVersion"
 
 }

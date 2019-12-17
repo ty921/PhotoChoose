@@ -5,12 +5,11 @@ import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
+
 /**
- * author：luck
- * project：PreviewViewPager
- * package：com.luck.picture.ui
- * email：893855882@qq.com
- * data：16/12/31
+ * @author：luck
+ * @date：2016-12-31 22:12
+ * @describe：PreviewViewPager
  */
 
 public class PreviewViewPager extends ViewPager {
@@ -39,6 +38,16 @@ public class PreviewViewPager extends ViewPager {
             return super.onInterceptTouchEvent(ev);
         } catch (IllegalArgumentException ex) {
             ex.printStackTrace();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        try {
+            return super.dispatchTouchEvent(ev);
+        } catch (IllegalArgumentException ignored) {
+        } catch (ArrayIndexOutOfBoundsException e) {
         }
         return false;
     }

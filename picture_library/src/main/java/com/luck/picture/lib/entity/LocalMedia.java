@@ -12,9 +12,18 @@ import android.text.TextUtils;
 
 public class LocalMedia implements Parcelable {
     /**
+     * file to ID
+     */
+    private long id;
+    /**
      * original path
      */
     private String path;
+    /**
+     * # Check the original button to get the return value
+     * original path
+     */
+    private String originalPath;
     /**
      * compress path
      */
@@ -78,6 +87,16 @@ public class LocalMedia implements Parcelable {
      */
     private long size;
 
+    /**
+     * Whether the original image is displayed
+     */
+    private boolean isOriginal;
+
+    /**
+     * file name
+     */
+    private String fileName;
+
     public LocalMedia() {
 
     }
@@ -89,8 +108,11 @@ public class LocalMedia implements Parcelable {
         this.mimeType = mimeType;
     }
 
-    public LocalMedia(String path, long duration, int chooseModel, String mimeType, int width, int height, long size) {
+    public LocalMedia(long id, String path, String fileName, long duration, int chooseModel,
+                      String mimeType, int width, int height, long size) {
+        this.id = id;
         this.path = path;
+        this.fileName = fileName;
         this.duration = duration;
         this.chooseModel = chooseModel;
         this.mimeType = mimeType;
@@ -230,6 +252,39 @@ public class LocalMedia implements Parcelable {
         this.size = size;
     }
 
+    public boolean isOriginal() {
+        return isOriginal;
+    }
+
+    public void setOriginal(boolean original) {
+        isOriginal = original;
+    }
+
+    public String getOriginalPath() {
+        return originalPath;
+    }
+
+    public void setOriginalPath(String originalPath) {
+        this.originalPath = originalPath;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -237,7 +292,9 @@ public class LocalMedia implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeLong(this.id);
         dest.writeString(this.path);
+        dest.writeString(this.originalPath);
         dest.writeString(this.compressPath);
         dest.writeString(this.cutPath);
         dest.writeString(this.androidQToPath);
@@ -252,10 +309,14 @@ public class LocalMedia implements Parcelable {
         dest.writeInt(this.width);
         dest.writeInt(this.height);
         dest.writeLong(this.size);
+        dest.writeByte(this.isOriginal ? (byte) 1 : (byte) 0);
+        dest.writeString(this.fileName);
     }
 
     protected LocalMedia(Parcel in) {
+        this.id = in.readLong();
         this.path = in.readString();
+        this.originalPath = in.readString();
         this.compressPath = in.readString();
         this.cutPath = in.readString();
         this.androidQToPath = in.readString();
@@ -270,6 +331,8 @@ public class LocalMedia implements Parcelable {
         this.width = in.readInt();
         this.height = in.readInt();
         this.size = in.readLong();
+        this.isOriginal = in.readByte() != 0;
+        this.fileName = in.readString();
     }
 
     public static final Creator<LocalMedia> CREATOR = new Creator<LocalMedia>() {

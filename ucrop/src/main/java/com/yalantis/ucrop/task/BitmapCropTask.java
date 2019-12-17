@@ -13,6 +13,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+
 import com.yalantis.ucrop.callback.BitmapCropCallback;
 import com.yalantis.ucrop.model.CropParameters;
 import com.yalantis.ucrop.model.ExifInfo;
@@ -22,6 +23,7 @@ import com.yalantis.ucrop.util.FileUtils;
 import com.yalantis.ucrop.util.ImageHeaderParser;
 
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -150,39 +152,33 @@ public class BitmapCropTask extends AsyncTask<Void, Void, Throwable> {
 
         boolean shouldCrop = shouldCrop(mCroppedImageWidth, mCroppedImageHeight);
         Log.i(TAG, "Should crop: " + shouldCrop);
-        ParcelFileDescriptor parcelFileDescriptor =
-                mContext.get().getContentResolver().openFileDescriptor(mImageInputUri, "r");
-        FileInputStream inputStream = new FileInputStream(parcelFileDescriptor.getFileDescriptor());
-        String suffix = FileUtils.extSuffix(inputStream);
-        if (suffix.startsWith(".gif")) {
-            // gif 不裁剪
-            return true;
-        }
+        boolean isAndroidQ = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
         if (shouldCrop) {
-            ExifInterface originalExif = null;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    originalExif = new ExifInterface(parcelFileDescriptor.getFileDescriptor());
-                }
-                saveImage(Bitmap.createBitmap(mViewBitmap, cropOffsetX, cropOffsetY, mCroppedImageWidth, mCroppedImageHeight));
-                if (mCompressFormat.equals(Bitmap.CompressFormat.JPEG)) {
-                    ImageHeaderParser.copyExif(originalExif, mCroppedImageWidth, mCroppedImageHeight, mImageOutputPath);
-                }
+            ExifInterface originalExif;
+            if (isAndroidQ && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                ParcelFileDescriptor parcelFileDescriptor =
+                        mContext.get().getContentResolver().openFileDescriptor(mImageInputUri, "r");
+                FileInputStream inputStream = new FileInputStream(parcelFileDescriptor.getFileDescriptor());
+                originalExif = new ExifInterface(inputStream);
             } else {
                 originalExif = new ExifInterface(mImageInputUri.getPath());
-                saveImage(Bitmap.createBitmap(mViewBitmap, cropOffsetX, cropOffsetY, mCroppedImageWidth, mCroppedImageHeight));
-                if (mCompressFormat.equals(Bitmap.CompressFormat.JPEG)) {
-                    ImageHeaderParser.copyExif(originalExif, mCroppedImageWidth, mCroppedImageHeight, mImageOutputPath);
-                }
+            }
+            saveImage(Bitmap.createBitmap(mViewBitmap, cropOffsetX, cropOffsetY, mCroppedImageWidth, mCroppedImageHeight));
+            if (mCompressFormat.equals(Bitmap.CompressFormat.JPEG)) {
+                ImageHeaderParser.copyExif(originalExif, mCroppedImageWidth, mCroppedImageHeight, mImageOutputPath);
             }
             return true;
         } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                return true;
+            if (isAndroidQ) {
+                ParcelFileDescriptor parcelFileDescriptor =
+                        mContext.get().getContentResolver().openFileDescriptor(mImageInputUri, "r");
+                FileDescriptor fileDescriptor = parcelFileDescriptor.getFileDescriptor();
+                FileInputStream inputStream = new FileInputStream(fileDescriptor);
+                FileUtils.copyFile(inputStream, mImageOutputPath);
             } else {
                 FileUtils.copyFile(mImageInputUri.getPath(), mImageOutputPath);
             }
-            return false;
+            return true;
         }
     }
 

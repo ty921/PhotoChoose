@@ -4,12 +4,11 @@ import android.graphics.Rect;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
+
 /**
- * author：luck
- * project：GridSpacingItemDecoration
- * package：com.luck.picture.adapter
- * email：893855882@qq.com
- * data：16/12/31
+ * @author：luck
+ * @data：2016/12/27 下午23:50
+ * @描述:图片预览
  */
 
 public class GridSpacingItemDecoration extends RecyclerView.ItemDecoration {

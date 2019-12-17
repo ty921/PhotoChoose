@@ -17,42 +17,49 @@
 package com.yalantis.ucrop;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Build;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
-import com.bumptech.glide.request.RequestOptions;
+
+import com.yalantis.ucrop.callback.BitmapLoadShowCallback;
 import com.yalantis.ucrop.model.CutInfo;
+import com.yalantis.ucrop.util.BitmapLoadUtils;
+import com.yalantis.ucrop.util.FileUtils;
 
-import java.util.ArrayList;
+import java.io.File;
 import java.util.List;
 
 /**
- * author：luck
- * project：PictureSelector
- * package：com.luck.picture.adapter
- * email：893855882@qq.com
- * data：16/12/31
+ * @author：luck
+ * @date：2016-12-31 22:22
+ * @describe：图片列表
  */
 
-public class PicturePhotoGalleryAdapter extends RecyclerView.Adapter<PicturePhotoGalleryAdapter.ViewHolder> {
 
+public class PicturePhotoGalleryAdapter extends RecyclerView.Adapter<PicturePhotoGalleryAdapter.ViewHolder> {
+    private final int maxImageWidth = 200;
+    private final int maxImageHeight = 220;
     private Context context;
-    private List<CutInfo> list = new ArrayList<>();
+    private List<CutInfo> list;
     private LayoutInflater mInflater;
+    private boolean isAndroidQ;
 
     public PicturePhotoGalleryAdapter(Context context, List<CutInfo> list) {
         mInflater = LayoutInflater.from(context);
         this.context = context;
         this.list = list;
+        this.isAndroidQ = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
     }
 
-    public void bindData(List<CutInfo> list) {
+    public void setData(List<CutInfo> list) {
         this.list = list;
         notifyDataSetChanged();
     }
@@ -75,37 +82,64 @@ public class PicturePhotoGalleryAdapter extends RecyclerView.Adapter<PicturePhot
             holder.iv_dot.setVisibility(View.VISIBLE);
             holder.iv_dot.setImageResource(R.drawable.ucrop_oval_true);
         } else {
-            holder.iv_dot.setVisibility(View.GONE);
+            holder.iv_dot.setVisibility(View.INVISIBLE);
         }
 
-        RequestOptions options = new RequestOptions()
-                .placeholder(R.color.ucrop_color_grey)
-                .centerCrop()
-                .diskCacheStrategy(DiskCacheStrategy.ALL);
+        Uri uri = isAndroidQ ? Uri.parse(path) : Uri.fromFile(new File(path));
+        holder.tvGif.setVisibility(FileUtils.isGif(photoInfo.getMimeType()) ? View.VISIBLE : View.GONE);
+        BitmapLoadUtils.decodeBitmapInBackground(context, uri, maxImageWidth,
+                maxImageHeight,
+                new BitmapLoadShowCallback() {
 
-        Glide.with(context)
-                .load(path)
-                .transition(DrawableTransitionOptions.withCrossFade())
-                .apply(options)
-                .into(holder.mIvPhoto);
+                    @Override
+                    public void onBitmapLoaded(@NonNull Bitmap bitmap) {
+                        if (holder.mIvPhoto != null) {
+                            holder.mIvPhoto.setImageBitmap(bitmap);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(@NonNull Exception bitmapWorkerException) {
+                        if (holder.mIvPhoto != null) {
+                            holder.mIvPhoto.setImageResource(R.color.ucrop_color_ba3);
+                        }
+                    }
+                });
+
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onItemClick(holder.getAdapterPosition(), v);
+            }
+        });
     }
 
 
     @Override
     public int getItemCount() {
-        return list.size();
+        return list != null ? list.size() : 0;
     }
 
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView mIvPhoto;
         ImageView iv_dot;
+        TextView tvGif;
 
         public ViewHolder(View view) {
             super(view);
-            mIvPhoto = (ImageView) view.findViewById(R.id.iv_photo);
-            iv_dot = (ImageView) view.findViewById(R.id.iv_dot);
+            mIvPhoto = view.findViewById(R.id.iv_photo);
+            iv_dot = view.findViewById(R.id.iv_dot);
+            tvGif = view.findViewById(R.id.tv_gif);
         }
     }
 
+    private OnItemClickListener listener;
+
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.listener = listener;
+    }
+
+    public interface OnItemClickListener {
+        void onItemClick(int position, View view);
+    }
 }

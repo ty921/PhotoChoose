@@ -6,9 +6,11 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 
+
 import com.luck.picture.lib.config.PictureConfig;
 import com.luck.picture.lib.config.PictureMimeType;
 import com.luck.picture.lib.entity.LocalMedia;
+import com.luck.picture.lib.style.PictureParameterStyle;
 import com.luck.picture.lib.tools.DoubleUtils;
 
 import java.io.Serializable;
@@ -83,7 +85,19 @@ public final class PictureSelector {
      * @return
      */
     public PictureSelectionModel themeStyle(int themeStyle) {
-        return new PictureSelectionModel(this, PictureMimeType.ofImage()).theme(themeStyle);
+        return new PictureSelectionModel(this, PictureMimeType.ofImage())
+                .theme(themeStyle);
+    }
+
+    /**
+     * 外部预览时动态代码设置样式
+     *
+     * @param style
+     * @return
+     */
+    public PictureSelectionModel setPictureStyle(PictureParameterStyle style) {
+        return new PictureSelectionModel(this, PictureMimeType.ofImage())
+                .setPictureStyle(style);
     }
 
     /**
@@ -139,13 +153,14 @@ public final class PictureSelector {
      * @param position
      * @param medias
      */
-    public void externalPicturePreview(int position, List<LocalMedia> medias) {
+    public void externalPicturePreview(int position, List<LocalMedia> medias, int enterAnimation) {
         if (!DoubleUtils.isFastDoubleClick()) {
             Intent intent = new Intent(getActivity(), PictureExternalPreviewActivity.class);
             intent.putExtra(PictureConfig.EXTRA_PREVIEW_SELECT_LIST, (Serializable) medias);
             intent.putExtra(PictureConfig.EXTRA_POSITION, position);
             getActivity().startActivity(intent);
-            getActivity().overridePendingTransition(R.anim.a5, 0);
+            getActivity().overridePendingTransition(enterAnimation != 0
+                    ? enterAnimation : R.anim.picture_anim_enter, R.anim.picture_anim_fade_in);
         }
     }
 
@@ -156,14 +171,15 @@ public final class PictureSelector {
      * @param medias
      * @param directory_path
      */
-    public void externalPicturePreview(int position, String directory_path, List<LocalMedia> medias) {
+    public void externalPicturePreview(int position, String directory_path, List<LocalMedia> medias, int enterAnimation) {
         if (!DoubleUtils.isFastDoubleClick()) {
             Intent intent = new Intent(getActivity(), PictureExternalPreviewActivity.class);
             intent.putExtra(PictureConfig.EXTRA_PREVIEW_SELECT_LIST, (Serializable) medias);
             intent.putExtra(PictureConfig.EXTRA_POSITION, position);
-            intent.putExtra(PictureConfig.DIRECTORY_PATH, directory_path);
+            intent.putExtra(PictureConfig.EXTRA_DIRECTORY_PATH, directory_path);
             getActivity().startActivity(intent);
-            getActivity().overridePendingTransition(R.anim.a5, 0);
+            getActivity().overridePendingTransition(enterAnimation != 0
+                    ? enterAnimation : R.anim.picture_anim_enter, R.anim.picture_anim_fade_in);
         }
     }
 
@@ -175,7 +191,8 @@ public final class PictureSelector {
     public void externalPictureVideo(String path) {
         if (!DoubleUtils.isFastDoubleClick()) {
             Intent intent = new Intent(getActivity(), PictureVideoPlayActivity.class);
-            intent.putExtra("video_path", path);
+            intent.putExtra(PictureConfig.EXTRA_VIDEO_PATH, path);
+            intent.putExtra(PictureConfig.EXTRA_PREVIEW_VIDEO, true);
             getActivity().startActivity(intent);
         }
     }
@@ -188,9 +205,9 @@ public final class PictureSelector {
     public void externalPictureAudio(String path) {
         if (!DoubleUtils.isFastDoubleClick()) {
             Intent intent = new Intent(getActivity(), PicturePlayAudioActivity.class);
-            intent.putExtra("audio_path", path);
+            intent.putExtra(PictureConfig.EXTRA_AUDIO_PATH, path);
             getActivity().startActivity(intent);
-            getActivity().overridePendingTransition(R.anim.a5, 0);
+            getActivity().overridePendingTransition(R.anim.picture_anim_enter, 0);
         }
     }
 

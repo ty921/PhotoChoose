@@ -16,6 +16,8 @@ import android.view.Display;
 import android.view.WindowManager;
 
 import com.yalantis.ucrop.callback.BitmapLoadCallback;
+import com.yalantis.ucrop.callback.BitmapLoadShowCallback;
+import com.yalantis.ucrop.task.BitmapLoadShowTask;
 import com.yalantis.ucrop.task.BitmapLoadTask;
 
 import java.io.Closeable;
@@ -35,6 +37,15 @@ public class BitmapLoadUtils {
                                                 BitmapLoadCallback loadCallback) {
 
         new BitmapLoadTask(context, uri, outputUri, requiredWidth, requiredHeight, loadCallback).execute();
+    }
+
+    public static void decodeBitmapInBackground(@NonNull Context context,
+                                                @NonNull Uri uri,
+                                                int requiredWidth,
+                                                int requiredHeight,
+                                                BitmapLoadShowCallback loadCallback) {
+
+        new BitmapLoadShowTask(context, uri, requiredWidth, requiredHeight, loadCallback).execute();
     }
 
     public static Bitmap transformBitmap(@NonNull Bitmap bitmap, @NonNull Matrix transformMatrix) {

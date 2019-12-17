@@ -5,14 +5,18 @@ import android.content.ContentUris;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.content.FileProvider;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -25,6 +29,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.channels.FileChannel;
 import java.util.Locale;
 
@@ -36,13 +41,9 @@ import java.util.Locale;
 
 public class PictureFileUtils {
 
-    public static final String POSTFIX = ".JPEG";
+    public static final String POSTFIX = ".jpg";
     public static final String POST_VIDEO = ".mp4";
     public static final String POST_AUDIO = ".mp3";
-    public static final String APP_NAME = "PictureSelector";
-    public static final String CAMERA_PATH_IMAGE = "/" + APP_NAME + "/CameraImage/";
-    public static final String CAMERA_PATH_VIDEO = "/" + APP_NAME + "/CameraVideo/";
-    public static final String CAMERA_PATH_AUDIO = "/" + APP_NAME + "/CameraAudio/";
 
     /**
      * @param context
@@ -50,6 +51,7 @@ public class PictureFileUtils {
      * @param format
      * @return
      */
+    @Nullable
     public static File createCameraFile(Context context, int type, String fileName, String format) {
         return createMediaFile(context, type, fileName, format);
     }
@@ -58,44 +60,40 @@ public class PictureFileUtils {
      * 创建文件
      *
      * @param context
-     * @param type
+     * @param chooseMode
      * @param fileName
      * @param format
      * @return
      */
-    private static File createMediaFile(Context context, int type, String fileName, String format) {
-        File rootDir;
-        if (SdkVersionUtils.checkedAndroid_Q()) {
-            rootDir = getRootDirFile(context, type);
-        } else {
-            String state = Environment.getExternalStorageState();
-            rootDir = state.equals(Environment.MEDIA_MOUNTED) ?
-                    Environment.getExternalStorageDirectory() : context.getCacheDir();
-        }
+    @Nullable
+    private static File createMediaFile(Context context, int chooseMode, String fileName, String format) {
+        return createOutFile(context, chooseMode, fileName, format);
+    }
+
+    @Nullable
+    private static File createOutFile(Context context, int chooseMode, String fileName, String format) {
+        String state = Environment.getExternalStorageState();
+        File rootDir = state.equals(Environment.MEDIA_MOUNTED) ? Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+                : getRootDirFile(context, chooseMode);
         if (rootDir != null && !rootDir.exists() && rootDir.mkdirs()) {
         }
-        String parentPath = getParentPath(type);
-        File folderDir = new File(SdkVersionUtils.checkedAndroid_Q()
-                ? rootDir.getAbsolutePath() : rootDir.getAbsolutePath() + parentPath);
+
+        File folderDir = new File(rootDir.getAbsolutePath() + File.separator + "Camera" + File.separator);
         if (folderDir != null && !folderDir.exists() && folderDir.mkdirs()) {
         }
-        fileName = TextUtils.isEmpty(fileName) ? String.valueOf(System.currentTimeMillis()) : fileName;
-        File tmpFile;
-        String suffixType;
-        switch (type) {
+        boolean isOutFileNameEmpty = TextUtils.isEmpty(fileName);
+        switch (chooseMode) {
             case PictureConfig.TYPE_VIDEO:
-                tmpFile = new File(folderDir, fileName + POST_VIDEO);
-                break;
+                String newFileVideoName = isOutFileNameEmpty ? DateUtils.getCreateFileName("VID_") + POST_VIDEO : fileName;
+                return new File(folderDir, newFileVideoName);
             case PictureConfig.TYPE_AUDIO:
-                tmpFile = new File(folderDir, fileName + POST_AUDIO);
-                break;
+                String newFileAudioName = isOutFileNameEmpty ? DateUtils.getCreateFileName("AUD_") + POST_AUDIO : fileName;
+                return new File(folderDir, newFileAudioName);
             default:
-                suffixType = TextUtils.isEmpty(format) ? POSTFIX : format;
-                tmpFile = new File(folderDir, fileName + suffixType);
-                break;
+                String suffix = TextUtils.isEmpty(format) ? POSTFIX : format;
+                String newFileImageName = isOutFileNameEmpty ? DateUtils.getCreateFileName("IMG_") + suffix : fileName;
+                return new File(folderDir, newFileImageName);
         }
-        Log.i("Mike", "createMediaFile: " + tmpFile.getAbsolutePath());
-        return tmpFile;
     }
 
     /**
@@ -105,6 +103,7 @@ public class PictureFileUtils {
      * @param type
      * @return
      */
+    @Nullable
     private static File getRootDirFile(Context context, int type) {
         switch (type) {
             case PictureConfig.TYPE_VIDEO:
@@ -113,23 +112,6 @@ public class PictureFileUtils {
                 return context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
             default:
                 return context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        }
-    }
-
-    /**
-     * 内存卡目录下的媒体文件目录
-     *
-     * @param type
-     * @return
-     */
-    private static String getParentPath(int type) {
-        switch (type) {
-            case PictureConfig.TYPE_VIDEO:
-                return CAMERA_PATH_VIDEO;
-            case PictureConfig.TYPE_AUDIO:
-                return CAMERA_PATH_AUDIO;
-            default:
-                return CAMERA_PATH_IMAGE;
         }
     }
 
@@ -330,10 +312,18 @@ public class PictureFileUtils {
      * @param path 图片绝对路径
      * @return degree旋转的角度
      */
-    public static int readPictureDegree(String path) {
+    public static int readPictureDegree(Context context, String path) {
         int degree = 0;
         try {
-            ExifInterface exifInterface = new ExifInterface(path);
+            ExifInterface exifInterface;
+            if (SdkVersionUtils.checkedAndroid_Q()) {
+                ParcelFileDescriptor parcelFileDescriptor =
+                        context.getContentResolver()
+                                .openFileDescriptor(Uri.parse(path), "r");
+                exifInterface = new ExifInterface(parcelFileDescriptor.getFileDescriptor());
+            } else {
+                exifInterface = new ExifInterface(path);
+            }
             int orientation = exifInterface.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
             switch (orientation) {
                 case ExifInterface.ORIENTATION_ROTATE_90:
@@ -346,7 +336,7 @@ public class PictureFileUtils {
                     degree = 270;
                     break;
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return degree;
@@ -359,11 +349,13 @@ public class PictureFileUtils {
      * @param bitmap
      * @return
      */
-    public static Bitmap rotaingImageView(int angle, Bitmap bitmap) {
+    public static Bitmap rotatingImageView(int angle, Bitmap bitmap) {
+        if (bitmap == null) {
+            return null;
+        }
         //旋转图片 动作
         Matrix matrix = new Matrix();
         matrix.postRotate(angle);
-        System.out.println("angle2=" + angle);
         // 创建新的图片
         Bitmap resizedBitmap = Bitmap.createBitmap(bitmap, 0, 0,
                 bitmap.getWidth(), bitmap.getHeight(), matrix, true);
@@ -376,7 +368,7 @@ public class PictureFileUtils {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
             bos.flush();
             bos.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -387,6 +379,7 @@ public class PictureFileUtils {
      * @param filename
      * @return
      */
+    @Nullable
     public static String createDir(Context context, String filename) {
         File rootDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
         if (!rootDir.exists())
@@ -397,12 +390,18 @@ public class PictureFileUtils {
         return rootDir + "/" + filename;
     }
 
-
-    public static String getDCIMCameraPath(Context ctx) {
+    @Nullable
+    public static String getDCIMCameraPath(Context ctx, String mimeType) {
         String absolutePath;
         try {
             if (SdkVersionUtils.checkedAndroid_Q()) {
-                absolutePath = "%" + ctx.getExternalFilesDir(Environment.DIRECTORY_PICTURES) + "/Camera";
+                if (PictureMimeType.eqVideo(mimeType)) {
+                    absolutePath = "%" + ctx.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+                } else if (PictureMimeType.eqAudio(mimeType)) {
+                    absolutePath = "%" + ctx.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+                } else {
+                    absolutePath = "%" + ctx.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+                }
             } else {
                 absolutePath = "%" + Environment.getExternalStoragePublicDirectory
                         (Environment.DIRECTORY_DCIM).getAbsolutePath() + "/Camera";
@@ -434,10 +433,143 @@ public class PictureFileUtils {
     }
 
     /**
+     * set empty PictureSelector Cache
+     *
+     * @param context
+     */
+    public static void deleteAllCacheDirFile(Context context) {
+
+        File dirPictures = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        if (dirPictures != null) {
+            File[] files = dirPictures.listFiles();
+            for (File file : files) {
+                if (file.isFile()) {
+                    file.delete();
+                }
+            }
+        }
+
+        File dirMovies = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+        if (dirPictures != null) {
+            File[] files = dirMovies.listFiles();
+            for (File file : files) {
+                if (file.isFile()) {
+                    file.delete();
+                }
+            }
+        }
+
+        File dirMusic = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC);
+        if (dirPictures != null) {
+            File[] files = dirMusic.listFiles();
+            for (File file : files) {
+                if (file.isFile()) {
+                    file.delete();
+                }
+            }
+        }
+    }
+
+    /**
      * @param ctx
      * @return
      */
     public static String getDiskCacheDir(Context ctx) {
         return ctx.getExternalFilesDir(Environment.DIRECTORY_PICTURES).getPath();
+    }
+
+    /**
+     * 生成uri
+     *
+     * @param context
+     * @param cameraFile
+     * @return
+     */
+    public static Uri parUri(Context context, File cameraFile) {
+        Uri imageUri;
+        String authority = context.getPackageName() + ".provider";
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
+            //通过FileProvider创建一个content类型的Uri
+            imageUri = FileProvider.getUriForFile(context, authority, cameraFile);
+        } else {
+            imageUri = Uri.fromFile(cameraFile);
+        }
+        return imageUri;
+    }
+
+    /**
+     * 获取图片后缀
+     *
+     * @param input
+     * @return
+     */
+    public static String extSuffix(InputStream input) {
+        try {
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(input, null, options);
+            return options.outMimeType.replace("image/", ".");
+        } catch (Exception e) {
+            return PictureMimeType.JPEG;
+        }
+    }
+
+    /**
+     * 判断拍照 图片是否旋转
+     *
+     * @param degree
+     * @param path
+     */
+    public static void rotateImage(int degree, String path) {
+        if (degree > 0) {
+            try {
+                // 针对相片有旋转问题的处理方式
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inSampleSize = 2;
+                File file = new File(path);
+                Bitmap bitmap = BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
+                Bitmap bmp = PictureFileUtils.rotatingImageView(degree, bitmap);
+                if (bmp != null) {
+                    PictureFileUtils.saveBitmapFile(bmp, file);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
+    /**
+     * 判断拍照 图片是否旋转
+     *
+     * @param degree
+     * @param path
+     */
+    public static String rotateImageToAndroidQ(Context context, int degree, String path, String newFileName) {
+        if (degree > 0) {
+            try {
+                // 针对相片有旋转问题的处理方式
+                if (SdkVersionUtils.checkedAndroid_Q()) {
+                    BitmapFactory.Options opts = new BitmapFactory.Options();
+                    opts.inSampleSize = 2;
+                    ParcelFileDescriptor parcelFileDescriptor =
+                            context.getContentResolver()
+                                    .openFileDescriptor(Uri.parse(path), "r");
+                    FileInputStream inputStream = new FileInputStream(parcelFileDescriptor.getFileDescriptor());
+                    Bitmap bitmap = BitmapFactory
+                            .decodeStream(inputStream, null, opts);
+                    String suffix = PictureFileUtils.extSuffix(inputStream);
+                    Bitmap bmp = PictureFileUtils.rotatingImageView(degree, bitmap);
+                    if (bmp != null) {
+                        String dir = createDir(context, TextUtils.isEmpty(newFileName) ? DateUtils.getCreateFileName("IMG_") + suffix : newFileName);
+                        PictureFileUtils.saveBitmapFile(bmp, new File(dir));
+                        return dir;
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return "";
     }
 }
