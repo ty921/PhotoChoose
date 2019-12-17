@@ -23,7 +23,7 @@ import java.util.List;
  */
 public class BroadcastManager {
     private static final String TAG = BroadcastManager.class.getSimpleName();
-    private LocalBroadcastManager localBroadcastManager;
+    private static LocalBroadcastManager localBroadcastManager;
 
     private Intent intent;
     private String action;
