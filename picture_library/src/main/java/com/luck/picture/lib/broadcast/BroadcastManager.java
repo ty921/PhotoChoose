@@ -23,14 +23,13 @@ import java.util.List;
  */
 public class BroadcastManager {
     private static final String TAG = BroadcastManager.class.getSimpleName();
-    private static LocalBroadcastManager localBroadcastManager;
-
+    private static Context mContext;
     private Intent intent;
     private String action;
 
     public static BroadcastManager getInstance(Context ctx) {
         BroadcastManager broadcastManager = new BroadcastManager();
-        broadcastManager.localBroadcastManager = LocalBroadcastManager.getInstance(ctx.getApplicationContext());
+        mContext = ctx;
         return broadcastManager;
     }
 
@@ -196,8 +195,8 @@ public class BroadcastManager {
 
         intent.setAction(action);
 
-        if (null != localBroadcastManager) {
-            localBroadcastManager.sendBroadcast(intent);
+        if (null != mContext) {
+            mContext.sendBroadcast(intent);
         }
     }
 
@@ -211,8 +210,8 @@ public class BroadcastManager {
                 iFilter.addAction(action);
             }
         }
-        if (null != localBroadcastManager) {
-            localBroadcastManager.registerReceiver(br, iFilter);
+        if (null != mContext) {
+            mContext.registerReceiver(br, iFilter);
         }
     }
 
@@ -234,7 +233,7 @@ public class BroadcastManager {
         }
 
         try {
-            localBroadcastManager.unregisterReceiver(br);
+            mContext.unregisterReceiver(br);
         } catch (Exception e) {
 
         }

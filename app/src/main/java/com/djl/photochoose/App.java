@@ -22,12 +22,12 @@ public class App extends Application implements IApp {
         super.onCreate();
         /** PictureSelector日志管理配制开始 **/
         // PictureSelector 绑定监听用户获取全局上下文或其他...
-//        PictureAppMaster.getInstance().setApp(this);
-//        // PictureSelector Crash日志监听
-//        PictureSelectorCrashUtils.init((t, e) -> {
-//            // Crash之后的一些操作可再此处理，没有就忽略...
-//
-//        });
+        PictureAppMaster.getInstance().setApp(this);
+        // PictureSelector Crash日志监听
+        PictureSelectorCrashUtils.init((t, e) -> {
+            // Crash之后的一些操作可再此处理，没有就忽略...
+
+        });
         /** PictureSelector日志管理配制结束 **/
 //
 //        if (LeakCanary.isInAnalyzerProcess(this)) {
@@ -40,6 +40,6 @@ public class App extends Application implements IApp {
 
     @Override
     public Context getAppContext() {
-        return null;
+        return getApplicationContext();
     }
 }
